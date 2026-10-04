@@ -103,7 +103,14 @@ The frontend communicates with the Go backend using the `NEXT_PUBLIC_API_URL` en
 | `POST` | `/api/assets` | Create a new asset |
 | `PUT` | `/api/assets/:id` | Update an existing asset (omitting `preview_path` keeps the current preview) |
 | `DELETE` | `/api/assets/:id` | Delete an asset record (never touches `local_path`) |
-| `GET` | `/api/stats` | Unfiltered library counts (`total`, `favorites`, `by_category`) |
+| `GET` | `/api/stats` | Unfiltered library counts (`total`, `favorites`, `drafts`, `by_category`) |
+| `GET` | `/api/scanner/config` | Scanner settings (library roots, ignore list, archive folders, folder → category map, dependency BOOTH ids) |
+| `PUT` | `/api/scanner/config` | Save scanner settings |
+| `POST` | `/api/scanner/scan` | Scan the library roots: new assets become drafts, new files of known assets are linked to them |
+| `POST` | `/api/scanner/accept` | Accept drafts (`{"asset_ids": [...]}`) |
+| `POST` | `/api/scanner/ignore` | Remove drafts and skip their paths in later scans (files on disk untouched) |
+| `GET` | `/api/scanner/ignored` | List ignored paths |
+| `DELETE` | `/api/scanner/ignored?path=` | Let the scanner pick an ignored path up again |
 | `GET` | `/api/tags` | List all existing tags |
 | `POST` | `/api/tags` | Create or get tag |
 | `POST` | `/api/filesystem/pick-folder` | Open native Windows folder browser (local only) |
@@ -232,6 +239,20 @@ Response (`200 OK`):
 }
 ```
 
+## Scanning Your Asset Folder
+
+Open **Scan & Review** in the sidebar (`/review`):
+
+1. **Settings** → add your library folder (e.g. `N:\Unity Materials`) and adjust the folder → category map.
+2. **Scan now**. The scanner only reads: folder listings, small readme / `.url` files and cover images.
+   - Level 1 folders are categories (`Clothes`, `Models`, …); level 2 entries are assets.
+   - Zips in `LEGACY` / `Zips` folders are matched to their extracted folder by name (case, width,
+     separators and version are ignored), even across categories. Several versions are grouped into one asset.
+   - BOOTH links come from an item id in the folder name or from readme / `.url` files (dependencies such as
+     lilToon are skipped). Links to avatars you own become "compatible avatar" suggestions.
+   - `AvatarPass` (and anything in **Never scan**) is never opened.
+3. Review the drafts: accept, edit, change category in bulk, or ignore. Re-scanning only reports what is new.
+
 ## Running Tests & Verification
 
 ### Run Automated Backend Tests
@@ -268,6 +289,6 @@ Milestone numbers follow [PROJECT_SPEC.md](PROJECT_SPEC.md) section 15.
   - Extras done early from the future roadmap: favorites, sorting, has-preview / has-BOOTH / local-status filters, URL query persistence, library stats
 - [x] **Milestone 6.5**: Cleanup (edit no longer wipes preview, lint clean, sidebar counts use unfiltered stats)
 - [x] **Milestone 7**: Data model v2 (category tree + management page, asset files & versions, avatar compatibility, draft status, automatic pre-migration backup)
-- [ ] **Milestone 8**: Filesystem scanner + review screen
+- [x] **Milestone 8**: Filesystem scanner + review screen (drafts, archive/version grouping, BOOTH id & compatibility hints, preview from cover image, ignore list)
 - [ ] **Milestone 9**: BOOTH metadata import
 - [ ] **Milestone 10**: UI refresh

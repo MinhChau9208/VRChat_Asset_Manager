@@ -797,6 +797,8 @@ Rules:
 - Version suffixes (`_v1.2`, `ver1.02`, `Ver_1.3`, `1.1.1`) group folders of
   the same asset into versions.
 - Mojibake Shift-JIS names (e.g. `ìRïcâfâé…`) get a decoded name suggestion.
+  (Deferred: needs a Shift-JIS decoder dependency; no asset-level name in the
+  current library is affected.)
 - BOOTH id candidates, in order of confidence:
   1. 6–8 digit number in the folder/file name (e.g. `4460917 avatargimmick …`)
   2. BOOTH links in `.url` / readme files inside the asset folder, excluding

@@ -750,3 +750,19 @@ export function applyBooth(assetIds: number[], includeTags = false): Promise<{ r
 export function boothSearchUrl(name: string): string {
   return `https://booth.pm/ja/search/${encodeURIComponent(name)}`;
 }
+
+// ---- Bulk edit (Milestone 10) ----
+
+export interface BulkUpdateInput {
+  asset_ids: number[];
+  set_category?: boolean;
+  category_id?: number | null;
+  add_tags?: string[];
+  add_compatible_avatars?: CompatAvatar[];
+  is_favorite?: boolean;
+}
+
+/** Apply the same change to several assets. Tags and avatars are added, never removed. */
+export function bulkUpdateAssets(input: BulkUpdateInput): Promise<{ updated: number }> {
+  return sendJSON("POST", "/api/assets/bulk", input, "Bulk update failed");
+}

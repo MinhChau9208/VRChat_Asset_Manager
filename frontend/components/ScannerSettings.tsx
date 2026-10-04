@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Category, ScannerConfig, buildCategoryTree, pickFolder, saveScannerConfig } from "@/lib/api";
+import { Folder, FolderOpen, X } from "lucide-react";
 
 interface ScannerSettingsProps {
   config: ScannerConfig;
@@ -10,8 +11,8 @@ interface ScannerSettingsProps {
 }
 
 const inputClass =
-  "rounded-lg border border-neutral-800 bg-neutral-950/80 px-3 py-1.5 text-xs text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500";
-const labelClass = "block text-[11px] uppercase tracking-wider font-mono text-neutral-400 mb-1.5";
+  "rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring";
+const labelClass = "block text-xs uppercase tracking-wider font-mono text-muted-foreground mb-1.5";
 
 const toList = (text: string) =>
   text
@@ -77,22 +78,22 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
       <div>
         <span className={labelClass}>Library folders</span>
         {roots.length === 0 && (
-          <p className="text-xs text-amber-300 mb-2">Add the folder that holds your assets, e.g. N:\Unity Materials.</p>
+          <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">Add the folder that holds your assets, e.g. N:\Unity Materials.</p>
         )}
         <ul className="space-y-1 mb-2">
           {roots.map((r) => (
             <li
               key={r}
-              className="flex items-center gap-2 rounded-lg bg-neutral-950/80 border border-neutral-800 px-3 py-1.5"
+              className="flex items-center gap-2 rounded-lg bg-background/80 border border-border px-3 py-1.5"
             >
-              <span className="flex-1 font-mono text-xs text-neutral-200 break-all">📁 {r}</span>
+              <span className="flex-1 font-mono text-xs text-foreground break-all"><Folder className="mr-1.5 inline size-3.5" />{r}</span>
               <button
                 type="button"
                 onClick={() => setRoots(roots.filter((x) => x !== r))}
-                className="text-neutral-500 hover:text-rose-400 text-xs cursor-pointer"
+                className="text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 text-xs cursor-pointer"
                 title="Remove"
               >
-                ✕
+                <X className="size-3.5" />
               </button>
             </li>
           ))}
@@ -113,9 +114,9 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
           <button
             type="button"
             onClick={handleBrowse}
-            className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs border border-neutral-700 cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-muted hover:bg-accent text-foreground text-xs border border-border cursor-pointer"
           >
-            📂 Browse
+            <FolderOpen className="size-4" /> Browse
           </button>
         </div>
       </div>
@@ -124,17 +125,17 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
         <div>
           <label className={labelClass}>Archive folders</label>
           <input value={archiveDirs} onChange={(e) => setArchiveDirs(e.target.value)} className={`${inputClass} w-full`} />
-          <p className="mt-1 text-[11px] text-neutral-500">Where original zips are kept (comma separated).</p>
+          <p className="mt-1 text-xs text-muted-foreground">Where original zips are kept (comma separated).</p>
         </div>
         <div>
           <label className={labelClass}>Never scan</label>
           <input value={ignore} onChange={(e) => setIgnore(e.target.value)} className={`${inputClass} w-full`} />
-          <p className="mt-1 text-[11px] text-neutral-500">Folder/file names skipped and never read.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Folder/file names skipped and never read.</p>
         </div>
         <div>
           <label className={labelClass}>Dependency BOOTH ids</label>
           <input value={deps} onChange={(e) => setDeps(e.target.value)} className={`${inputClass} w-full`} />
-          <p className="mt-1 text-[11px] text-neutral-500">Linked in readmes but never the asset (lilToon…).</p>
+          <p className="mt-1 text-xs text-muted-foreground">Linked in readmes but never the asset (lilToon…).</p>
         </div>
       </div>
 
@@ -152,7 +153,7 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
                 placeholder="folder"
                 className={`${inputClass} w-28 font-mono`}
               />
-              <span className="text-neutral-600 text-xs">→</span>
+              <span className="text-muted-foreground/70 text-xs">→</span>
               <select
                 value={category}
                 onChange={(e) => setMapping(mapping.map((m, i) => (i === idx ? [m[0], e.target.value] : m)))}
@@ -173,10 +174,10 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
               <button
                 type="button"
                 onClick={() => setMapping(mapping.filter((_, i) => i !== idx))}
-                className="text-neutral-500 hover:text-rose-400 text-xs px-1 cursor-pointer"
+                className="text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 text-xs px-1 cursor-pointer"
                 title="Remove"
               >
-                ✕
+                <X className="size-3.5" />
               </button>
             </div>
           ))}
@@ -184,7 +185,7 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
         <button
           type="button"
           onClick={() => setMapping([...mapping, ["", categories[0]?.name ?? "Other"]])}
-          className="mt-2 text-[11px] text-cyan-400 hover:text-cyan-300 cursor-pointer"
+          className="mt-2 text-xs text-primary hover:text-primary cursor-pointer"
         >
           + Add mapping
         </button>
@@ -195,11 +196,11 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
           type="button"
           onClick={handleSave}
           disabled={saving}
-          className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+          className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold cursor-pointer disabled:opacity-50"
         >
           {saving ? "Saving…" : "Save settings"}
         </button>
-        {message && <span className={`text-xs ${message.ok ? "text-emerald-400" : "text-rose-400"}`}>{message.text}</span>}
+        {message && <span className={`text-xs ${message.ok ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>{message.text}</span>}
       </div>
     </div>
   );

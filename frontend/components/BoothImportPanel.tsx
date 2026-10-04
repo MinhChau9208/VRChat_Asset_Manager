@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { BoothSuggestion, CompatAvatar } from "@/lib/api";
+import { UserRound, X } from "lucide-react";
 
 export interface BoothSelection {
   name?: string;
@@ -50,28 +51,28 @@ export const BoothImportPanel: React.FC<BoothImportPanelProps> = ({ suggestion, 
     });
 
   return (
-    <div className="mt-2 p-4 rounded-xl bg-neutral-950/90 border border-red-900/50 space-y-4">
+    <div className="mt-2 p-4 rounded-xl bg-background/90 border border-red-300 dark:border-red-900/50 space-y-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="text-[11px] text-neutral-400">
-          <span className="text-red-300 font-semibold">BOOTH #{suggestion.item_id}</span> · {suggestion.booth_category}
+        <div className="text-xs text-muted-foreground">
+          <span className="text-red-700 dark:text-red-300 font-semibold">BOOTH #{suggestion.item_id}</span> · {suggestion.booth_category}
           {suggestion.price && <> · {suggestion.price}</>}
-          {suggestion.is_adult && <span className="ml-1 text-rose-400">· R18</span>}
+          {suggestion.is_adult && <span className="ml-1 text-rose-600 dark:text-rose-400">· R18</span>}
         </div>
-        <button type="button" onClick={onClose} className="text-neutral-500 hover:text-neutral-200 text-xs cursor-pointer">
-          ✕
+        <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground text-xs cursor-pointer">
+          <X className="size-4" />
         </button>
       </div>
 
       {/* Images */}
       {suggestion.images.length > 0 && (
         <div>
-          <span className="block text-[11px] text-neutral-400 mb-1.5">Preview image (downloaded when you save)</span>
+          <span className="block text-xs text-muted-foreground mb-1.5">Preview image (downloaded when you save)</span>
           <div className="flex gap-2 overflow-x-auto pb-1">
             <button
               type="button"
               onClick={() => setImage(null)}
-              className={`h-20 w-20 shrink-0 rounded-lg border text-[10px] text-neutral-500 cursor-pointer ${
-                image === null ? "border-cyan-500 ring-1 ring-cyan-500" : "border-neutral-800"
+              className={`h-20 w-20 shrink-0 rounded-lg border text-xs text-muted-foreground cursor-pointer ${
+                image === null ? "border-primary/40 ring-1 ring-ring" : "border-border"
               }`}
             >
               Keep current
@@ -82,7 +83,7 @@ export const BoothImportPanel: React.FC<BoothImportPanelProps> = ({ suggestion, 
                 type="button"
                 onClick={() => setImage(url)}
                 className={`h-20 w-20 shrink-0 rounded-lg overflow-hidden border cursor-pointer ${
-                  image === url ? "border-cyan-500 ring-1 ring-cyan-500" : "border-neutral-800 opacity-70 hover:opacity-100"
+                  image === url ? "border-primary/40 ring-1 ring-ring" : "border-border opacity-70 hover:opacity-100"
                 }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -98,14 +99,14 @@ export const BoothImportPanel: React.FC<BoothImportPanelProps> = ({ suggestion, 
         <label className="flex items-start gap-2 cursor-pointer">
           <input type="checkbox" checked={useName} onChange={(e) => setUseName(e.target.checked)} className={`${checkClass} mt-0.5`} />
           <span>
-            <span className="text-neutral-400">Name:</span> <span className="text-white">{suggestion.name}</span>
+            <span className="text-muted-foreground">Name:</span> <span className="text-foreground">{suggestion.name}</span>
           </span>
         </label>
         {suggestion.author && (
           <label className="flex items-start gap-2 cursor-pointer">
             <input type="checkbox" checked={useAuthor} onChange={(e) => setUseAuthor(e.target.checked)} className={`${checkClass} mt-0.5`} />
             <span>
-              <span className="text-neutral-400">Author:</span> <span className="text-white">{suggestion.author}</span>
+              <span className="text-muted-foreground">Author:</span> <span className="text-foreground">{suggestion.author}</span>
             </span>
           </label>
         )}
@@ -113,7 +114,7 @@ export const BoothImportPanel: React.FC<BoothImportPanelProps> = ({ suggestion, 
           <label className="flex items-start gap-2 cursor-pointer">
             <input type="checkbox" checked={useCategory} onChange={(e) => setUseCategory(e.target.checked)} className={`${checkClass} mt-0.5`} />
             <span>
-              <span className="text-neutral-400">Category:</span> <span className="text-white">{suggestion.category_name}</span>
+              <span className="text-muted-foreground">Category:</span> <span className="text-foreground">{suggestion.category_name}</span>
             </span>
           </label>
         )}
@@ -121,7 +122,7 @@ export const BoothImportPanel: React.FC<BoothImportPanelProps> = ({ suggestion, 
 
       {suggestion.compatible_avatars.length > 0 && (
         <div>
-          <span className="block text-[11px] text-neutral-400 mb-1.5">Compatible avatars</span>
+          <span className="block text-xs text-muted-foreground mb-1.5">Compatible avatars</span>
           <div className="flex flex-wrap gap-1.5">
             {suggestion.compatible_avatars.map((c) => {
               const on = compat.some((x) => x.avatar_name === c.avatar_name);
@@ -130,12 +131,12 @@ export const BoothImportPanel: React.FC<BoothImportPanelProps> = ({ suggestion, 
                   key={c.avatar_name}
                   type="button"
                   onClick={() => toggleCompat(c)}
-                  className={`px-2 py-0.5 rounded-md text-[11px] border cursor-pointer ${
-                    on ? "bg-violet-950/60 text-violet-200 border-violet-700" : "bg-neutral-900 text-neutral-500 border-neutral-800 line-through"
+                  className={`px-2 py-0.5 rounded-md text-xs border cursor-pointer ${
+                    on ? "bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-violet-200 border-violet-300 dark:border-violet-700" : "bg-card text-muted-foreground border-border line-through"
                   }`}
                   title={c.avatar_asset_id !== null ? "In your library" : "Not in your library"}
                 >
-                  👤 {c.avatar_name}
+                  <UserRound className="inline size-3.5" /> {c.avatar_name}
                 </button>
               );
             })}
@@ -145,15 +146,15 @@ export const BoothImportPanel: React.FC<BoothImportPanelProps> = ({ suggestion, 
 
       {suggestion.tags.length > 0 && (
         <div>
-          <span className="block text-[11px] text-neutral-400 mb-1.5">BOOTH tags (click to add)</span>
+          <span className="block text-xs text-muted-foreground mb-1.5">BOOTH tags (click to add)</span>
           <div className="flex flex-wrap gap-1">
             {suggestion.tags.map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => toggleTag(t)}
-                className={`px-2 py-0.5 rounded text-[11px] border cursor-pointer ${
-                  tags.includes(t) ? "bg-cyan-950/60 text-cyan-200 border-cyan-700" : "bg-neutral-900 text-neutral-400 border-neutral-800"
+                className={`px-2 py-0.5 rounded text-xs border cursor-pointer ${
+                  tags.includes(t) ? "bg-primary/15 text-primary border-primary/40" : "bg-card text-muted-foreground border-border"
                 }`}
               >
                 #{t}
@@ -167,7 +168,7 @@ export const BoothImportPanel: React.FC<BoothImportPanelProps> = ({ suggestion, 
         <button
           type="button"
           onClick={onClose}
-          className="px-3 py-1.5 rounded-lg text-xs text-neutral-400 hover:text-neutral-200 bg-neutral-900 border border-neutral-800 cursor-pointer"
+          className="px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-foreground bg-card border border-border cursor-pointer"
         >
           Cancel
         </button>

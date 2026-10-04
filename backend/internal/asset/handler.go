@@ -90,6 +90,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/assets/{id}/status", h.GetStatus)
 	mux.HandleFunc("POST /api/assets/{id}/favorite", h.ToggleFavorite)
 	mux.HandleFunc("POST /api/assets/batch-status", h.BatchStatus)
+	mux.HandleFunc("POST /api/assets/bulk", h.BulkUpdate)
 	mux.HandleFunc("POST /api/assets/{id}/open-folder", h.OpenFolder)
 	mux.HandleFunc("POST /api/assets/{id}/files", h.AddFile)
 	mux.HandleFunc("DELETE /api/assets/{id}/files/{fileId}", h.DeleteFile)
@@ -266,6 +267,35 @@ func (h *Handler) BatchStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, BatchStatusResponse{Statuses: res})
+}
+
+// BulkUpdate handles POST /api/assets/bulk
+func (h *Handler) BulkUpdate(w http.ResponseWriter, r *http.Request) {
+	var req BulkUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json request body: "+err.Error())
+		return
+	}
+	if len(req.AssetIDs) == 0 {
+		writeError(w, http.StatusBadRequest, errEmptyBulk.Error())
+		return
+	}
+	if err := validateTags(req.AddTags); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	n, err := h.repo.BulkUpdate(r.Context(), req)
+	switch {
+	case errors.Is(err, ErrNotFound):
+		writeError(w, http.StatusNotFound, err.Error())
+	case errors.Is(err, ErrCategoryNotFound), errors.Is(err, ErrAvatarNotFound):
+		writeError(w, http.StatusBadRequest, err.Error())
+	case err != nil:
+		writeError(w, http.StatusInternalServerError, "bulk update failed: "+err.Error())
+	default:
+		writeJSON(w, http.StatusOK, map[string]int{"updated": n})
+	}
 }
 
 // GetByID handles GET /api/assets/{id}

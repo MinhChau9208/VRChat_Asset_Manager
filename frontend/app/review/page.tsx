@@ -25,9 +25,10 @@ import {
   updateAsset,
 } from "@/lib/api";
 import { ScannerSettings } from "@/components/ScannerSettings";
+import { Check, Package, ScanSearch, Settings2, ShoppingBag, TriangleAlert, UserRound, X } from "lucide-react";
 
 const selectClass =
-  "rounded-lg border border-neutral-800 bg-neutral-950/80 px-2 py-1 text-xs text-white focus:border-cyan-500 focus:outline-none cursor-pointer";
+  "rounded-lg border border-border bg-background/80 px-2 py-1 text-xs text-foreground focus:border-ring focus:outline-none cursor-pointer";
 
 function CategorySelect({
   categories,
@@ -183,16 +184,16 @@ export default function ReviewPage() {
   const setBooth = (d: Asset, url: string) => run(() => updateAsset(d.id, assetUpdatePayload(d, { booth_url: url })));
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <Link href="/" className="text-xs text-neutral-400 hover:text-cyan-400 transition-colors">
+            <Link href="/" className="text-xs text-muted-foreground hover:text-primary transition-colors">
               ← Back to library
             </Link>
-            <h1 className="mt-1 text-xl font-bold tracking-tight text-white">Scan & Review</h1>
-            <p className="text-xs text-neutral-400 mt-0.5">
+            <h1 className="mt-1 text-xl font-bold tracking-tight text-foreground">Scan & Review</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Scanning only reads your folders. New assets arrive as drafts for you to accept, edit or ignore.
             </p>
           </div>
@@ -200,15 +201,15 @@ export default function ReviewPage() {
             <button
               type="button"
               onClick={() => setShowSettings((v) => !v)}
-              className="px-3 py-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-xs border border-neutral-800 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card hover:bg-muted text-foreground text-xs border border-border cursor-pointer"
             >
-              ⚙️ Settings
+              <Settings2 className="size-4" /> Settings
             </button>
             <button
               type="button"
               onClick={handleScan}
               disabled={isScanning || !config || config.roots.length === 0}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isScanning ? (
                 <>
@@ -216,18 +217,18 @@ export default function ReviewPage() {
                   Scanning…
                 </>
               ) : (
-                "🔍 Scan now"
+                <><ScanSearch className="size-4" /> Scan now</>
               )}
             </button>
           </div>
         </div>
 
         {error && (
-          <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-800/60 text-xs text-rose-300">{error}</div>
+          <div className="p-3 rounded-lg bg-rose-100 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800/60 text-xs text-rose-700 dark:text-rose-300">{error}</div>
         )}
 
         {showSettings && config && (
-          <section className="p-5 rounded-xl bg-neutral-900/60 border border-neutral-800">
+          <section className="p-5 rounded-xl bg-card/60 border border-border">
             <ScannerSettings
               key={JSON.stringify(config)}
               config={config}
@@ -239,31 +240,31 @@ export default function ReviewPage() {
 
         {/* Last scan result */}
         {scanResult && (
-          <section className="p-4 rounded-xl bg-neutral-900/60 border border-neutral-800 text-xs space-y-2">
-            <div className="flex flex-wrap gap-x-5 gap-y-1 text-neutral-300">
+          <section className="p-4 rounded-xl bg-card/60 border border-border text-xs space-y-2">
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-foreground">
               <span>
-                <b className="text-white">{scanResult.created}</b> new drafts
+                <b className="text-foreground">{scanResult.created}</b> new drafts
               </span>
               <span>
-                <b className="text-white">{scanResult.attached.length}</b> files linked to existing assets
+                <b className="text-foreground">{scanResult.attached.length}</b> files linked to existing assets
               </span>
               <span>
-                <b className="text-white">{scanResult.already_linked}</b> already in library
+                <b className="text-foreground">{scanResult.already_linked}</b> already in library
               </span>
               {scanResult.ignored > 0 && (
                 <span>
-                  <b className="text-white">{scanResult.ignored}</b> ignored paths skipped
+                  <b className="text-foreground">{scanResult.ignored}</b> ignored paths skipped
                 </span>
               )}
-              <span className="text-neutral-500">{scanResult.duration_ms} ms</span>
+              <span className="text-muted-foreground">{scanResult.duration_ms} ms</span>
             </div>
             {scanResult.attached.length > 0 && (
               <details>
-                <summary className="cursor-pointer text-cyan-400">Show linked files</summary>
-                <ul className="mt-2 space-y-0.5 font-mono text-[11px] text-neutral-400">
+                <summary className="cursor-pointer text-primary">Show linked files</summary>
+                <ul className="mt-2 space-y-0.5 font-mono text-xs text-muted-foreground">
                   {scanResult.attached.map((a) => (
                     <li key={a.path}>
-                      <Link href={`/assets/${a.asset_id}`} className="text-neutral-200 hover:text-cyan-300">
+                      <Link href={`/assets/${a.asset_id}`} className="text-foreground hover:text-primary">
                         {a.asset_name}
                       </Link>{" "}
                       ← {a.path}
@@ -273,9 +274,9 @@ export default function ReviewPage() {
               </details>
             )}
             {scanResult.warnings.length > 0 && (
-              <ul className="text-amber-300 space-y-0.5">
+              <ul className="text-amber-700 dark:text-amber-300 space-y-0.5">
                 {scanResult.warnings.map((w) => (
-                  <li key={w}>⚠ {w}</li>
+                  <li key={w} className="flex items-center gap-1.5"><TriangleAlert className="size-3.5 shrink-0" /> {w}</li>
                 ))}
               </ul>
             )}
@@ -283,25 +284,25 @@ export default function ReviewPage() {
         )}
 
         {boothResults && (
-          <section className="p-4 rounded-xl bg-neutral-900/60 border border-red-900/40 text-xs space-y-1.5">
+          <section className="p-4 rounded-xl bg-card/60 border border-red-300 dark:border-red-900/40 text-xs space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-neutral-300">
-                BOOTH: <b className="text-white">{boothResults.filter((r) => r.ok).length}</b> updated
+              <span className="text-foreground">
+                BOOTH: <b className="text-foreground">{boothResults.filter((r) => r.ok).length}</b> updated
                 {boothResults.some((r) => !r.ok) && (
                   <>
-                    , <b className="text-rose-300">{boothResults.filter((r) => !r.ok).length}</b> failed
+                    , <b className="text-rose-700 dark:text-rose-300">{boothResults.filter((r) => !r.ok).length}</b> failed
                   </>
                 )}
               </span>
-              <button type="button" onClick={() => setBoothResults(null)} className="text-neutral-500 hover:text-neutral-200 cursor-pointer">
-                ✕
+              <button type="button" onClick={() => setBoothResults(null)} className="text-muted-foreground hover:text-foreground cursor-pointer">
+                <X className="size-4" />
               </button>
             </div>
-            <ul className="space-y-0.5 text-[11px]">
+            <ul className="space-y-0.5 text-xs">
               {boothResults.map((r) => (
-                <li key={r.asset_id} className={r.ok ? "text-neutral-400" : "text-rose-300"}>
-                  {r.ok ? "✓" : "✕"} {r.name}
-                  {r.ok && r.changed && r.changed.length > 0 && <span className="text-neutral-500"> · {r.changed.join(", ")}</span>}
+                <li key={r.asset_id} className={r.ok ? "text-muted-foreground" : "text-rose-700 dark:text-rose-300"}>
+                  {r.ok ? <Check className="inline size-3.5" /> : <X className="inline size-3.5" />} {r.name}
+                  {r.ok && r.changed && r.changed.length > 0 && <span className="text-muted-foreground"> · {r.changed.join(", ")}</span>}
                   {r.error && <span> · {r.error}</span>}
                 </li>
               ))}
@@ -312,16 +313,16 @@ export default function ReviewPage() {
         {missingCount > 0 && (
           <Link
             href="/?local_status=missing"
-            className="block p-3 rounded-lg bg-amber-950/30 border border-amber-800/50 text-xs text-amber-300 hover:border-amber-600"
+            className="block p-3 rounded-lg bg-amber-100 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/50 text-xs text-amber-700 dark:text-amber-300 hover:border-amber-600"
           >
-            ⚠ {missingCount} asset{missingCount === 1 ? "" : "s"} in your library point to files that are missing
+            <TriangleAlert className="mr-1 inline size-4" /> {missingCount} asset{missingCount === 1 ? "" : "s"} in your library point to files that are missing
             from disk. View them →
           </Link>
         )}
 
         {/* Bulk actions */}
-        <div className="flex flex-wrap items-center gap-2 sticky top-0 z-10 py-2 bg-neutral-950/90 backdrop-blur">
-          <label className="inline-flex items-center gap-2 text-xs text-neutral-300 cursor-pointer mr-2">
+        <div className="flex flex-wrap items-center gap-2 sticky top-0 z-10 py-2 bg-background/90 backdrop-blur">
+          <label className="inline-flex items-center gap-2 text-xs text-foreground cursor-pointer mr-2">
             <input
               type="checkbox"
               checked={allSelected}
@@ -339,22 +340,22 @@ export default function ReviewPage() {
                 disabled={busy}
                 className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
               >
-                ✓ Accept selected
+                <Check className="size-4" /> Accept selected
               </button>
               <button
                 type="button"
                 onClick={() => handleFetchBooth(selectedIds)}
                 disabled={busy}
-                className="px-3 py-1.5 rounded-lg bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
                 title="Fill name, author, empty category, preview and compatible avatars from BOOTH"
               >
-                {busy ? "Working…" : "🛒 Fetch BOOTH info"}
+                <ShoppingBag className="size-4" /> {busy ? "Working…" : "Fetch BOOTH info"}
               </button>
               <button
                 type="button"
                 onClick={() => handleIgnore(selectedIds)}
                 disabled={busy}
-                className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs border border-neutral-700 cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 rounded-lg bg-muted hover:bg-accent text-foreground text-xs border border-border cursor-pointer disabled:opacity-50"
               >
                 Ignore selected
               </button>
@@ -370,9 +371,9 @@ export default function ReviewPage() {
 
         {/* Draft list */}
         {isLoading ? (
-          <p className="text-xs text-neutral-500">Loading…</p>
+          <p className="text-xs text-muted-foreground">Loading…</p>
         ) : drafts.length === 0 ? (
-          <div className="p-10 text-center rounded-xl border border-dashed border-neutral-800 text-sm text-neutral-400">
+          <div className="p-10 text-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
             No drafts to review. {config?.roots.length ? "Run a scan to look for new assets." : "Add a library folder in Settings first."}
           </div>
         ) : (
@@ -385,7 +386,7 @@ export default function ReviewPage() {
                 <li
                   key={d.id}
                   className={`flex gap-3 p-3 rounded-xl border transition-colors ${
-                    selected.has(d.id) ? "bg-cyan-950/20 border-cyan-800/60" : "bg-neutral-900/60 border-neutral-800"
+                    selected.has(d.id) ? "bg-primary/20 border-primary/60" : "bg-card/60 border-border"
                   }`}
                 >
                   <input
@@ -394,18 +395,18 @@ export default function ReviewPage() {
                     onChange={() => toggle(d.id)}
                     className="mt-1 accent-cyan-500 shrink-0"
                   />
-                  <div className="h-20 w-20 shrink-0 rounded-lg bg-neutral-950 border border-neutral-800 overflow-hidden flex items-center justify-center">
+                  <div className="h-20 w-20 shrink-0 rounded-lg bg-background border border-border overflow-hidden flex items-center justify-center">
                     {d.preview_path ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={getAssetPreviewUrl(d.id, d.updated_at)} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-2xl opacity-40">📦</span>
+                      <Package className="size-7 text-muted-foreground/40" strokeWidth={1.5} />
                     )}
                   </div>
 
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/assets/${d.id}`} className="text-sm font-semibold text-white hover:text-cyan-300">
+                      <Link href={`/assets/${d.id}`} className="text-sm font-semibold text-foreground hover:text-primary">
                         {d.name}
                       </Link>
                       <CategorySelect
@@ -415,36 +416,36 @@ export default function ReviewPage() {
                       />
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-neutral-400">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                       <span title={(d.files ?? []).map((f) => f.path).join("\n")}>
                         {(d.files ?? []).length} file{(d.files ?? []).length === 1 ? "" : "s"}
                       </span>
                       {versions.map((v) => (
-                        <span key={v} className="px-1.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-800/60 font-mono">
+                        <span key={v} className="px-1.5 rounded bg-primary/15 text-primary border border-primary/60 font-mono">
                           v{v}
                         </span>
                       ))}
-                      <span className="font-mono text-neutral-500 truncate max-w-full">{d.local_path}</span>
+                      <span className="font-mono text-muted-foreground truncate max-w-full">{d.local_path}</span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
                       {d.booth_url ? (
                         <a
                           href={d.booth_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-1.5 py-0.5 rounded bg-red-950/50 text-red-300 border border-red-800/60 hover:border-red-600"
+                          className="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800/60 hover:border-red-600"
                           title={info?.booth_source ? `Found in ${info.booth_source}` : undefined}
                         >
-                          🛒 BOOTH {d.booth_url.split("/").pop()}
-                          {info?.booth_source && <span className="text-red-400/70"> · {info.booth_source}</span>}
+                          <ShoppingBag className="inline size-3.5" /> BOOTH {d.booth_url.split("/").pop()}
+                          {info?.booth_source && <span className="text-red-600 dark:text-red-400/70"> · {info.booth_source}</span>}
                         </a>
                       ) : (
                         <a
                           href={boothSearchUrl(d.name)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-neutral-500 hover:text-red-300"
+                          className="text-muted-foreground hover:text-red-700 dark:hover:text-red-300"
                           title="Open a BOOTH search for this name, then paste the item URL via Edit"
                         >
                           No BOOTH link · search on BOOTH ↗
@@ -455,7 +456,7 @@ export default function ReviewPage() {
                           type="button"
                           onClick={() => handleFetchBooth([d.id])}
                           disabled={busy}
-                          className="px-1.5 py-0.5 rounded bg-neutral-800 text-red-200 border border-red-900/60 hover:border-red-600 cursor-pointer disabled:opacity-50"
+                          className="px-1.5 py-0.5 rounded bg-muted text-red-800 dark:text-red-200 border border-red-300 dark:border-red-900/60 hover:border-red-600 cursor-pointer disabled:opacity-50"
                           title="Fill name, author, empty category, preview and compatible avatars from BOOTH"
                         >
                           ⤓ fetch info
@@ -467,7 +468,7 @@ export default function ReviewPage() {
                           type="button"
                           onClick={() => setBooth(d, c.url)}
                           disabled={busy}
-                          className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700 hover:border-neutral-500 cursor-pointer"
+                          className="px-1.5 py-0.5 rounded bg-muted text-foreground border border-border hover:border-border cursor-pointer"
                           title={`Found in ${c.source}. Click to use.`}
                         >
                           use {c.url.split("/").pop()}?
@@ -476,10 +477,10 @@ export default function ReviewPage() {
                       {(d.compatible_avatars ?? []).map((c) => (
                         <span
                           key={c.avatar_name}
-                          className="px-1.5 py-0.5 rounded bg-violet-950/50 text-violet-200 border border-violet-800/70"
+                          className="px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-950/50 text-violet-800 dark:text-violet-200 border border-violet-300 dark:border-violet-800/70"
                           title={(info?.compat_reasons ?? []).join("\n")}
                         >
-                          👤 {c.avatar_name}
+                          <UserRound className="inline size-3.5" /> {c.avatar_name}
                         </span>
                       ))}
                     </div>
@@ -492,11 +493,11 @@ export default function ReviewPage() {
                       disabled={busy}
                       className="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
                     >
-                      ✓ Accept
+                      <Check className="inline size-3.5" /> Accept
                     </button>
                     <Link
                       href={`/assets/${d.id}`}
-                      className="px-3 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs text-center border border-neutral-700"
+                      className="px-3 py-1 rounded-lg bg-muted hover:bg-accent text-foreground text-xs text-center border border-border"
                     >
                       Edit
                     </Link>
@@ -504,7 +505,7 @@ export default function ReviewPage() {
                       type="button"
                       onClick={() => handleIgnore([d.id])}
                       disabled={busy}
-                      className="px-3 py-1 rounded-lg text-neutral-400 hover:text-rose-300 text-xs cursor-pointer disabled:opacity-50"
+                      className="px-3 py-1 rounded-lg text-muted-foreground hover:text-rose-700 dark:hover:text-rose-300 text-xs cursor-pointer disabled:opacity-50"
                     >
                       Ignore
                     </button>
@@ -521,20 +522,20 @@ export default function ReviewPage() {
             <button
               type="button"
               onClick={() => setShowIgnored((v) => !v)}
-              className="text-neutral-400 hover:text-neutral-200 cursor-pointer"
+              className="text-muted-foreground hover:text-foreground cursor-pointer"
             >
               {showIgnored ? "▾" : "▸"} {ignoredPaths.length} ignored path{ignoredPaths.length === 1 ? "" : "s"}
             </button>
             {showIgnored && (
               <ul className="mt-2 space-y-1">
                 {ignoredPaths.map((p) => (
-                  <li key={p} className="flex items-center gap-2 font-mono text-[11px] text-neutral-500">
+                  <li key={p} className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
                     <span className="flex-1 break-all">{p}</span>
                     <button
                       type="button"
                       onClick={() => run(() => unignorePath(p))}
                       disabled={busy}
-                      className="text-cyan-400 hover:text-cyan-300 cursor-pointer font-sans"
+                      className="text-primary hover:text-primary cursor-pointer font-sans"
                     >
                       Restore
                     </button>

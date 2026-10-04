@@ -4,7 +4,7 @@ A local-first personal asset catalog and management tool for VRChat creators and
 
 ## Technology Stack
 
-- **Frontend**: Next.js 16 (App Router), TypeScript, Tailwind CSS
+- **Frontend**: Next.js 16 (App Router), TypeScript, Tailwind CSS v4, shadcn/ui (Radix) + lucide icons
 - **Backend**: Go 1.25+ (Standard Library HTTP server, REST API)
 - **Database**: SQLite (via pure-Go driver `modernc.org/sqlite`)
 - **Storage**: Local filesystem for asset files and preview images
@@ -94,6 +94,7 @@ The frontend communicates with the Go backend using the `NEXT_PUBLIC_API_URL` en
 | `POST` | `/api/assets/:id/files` | Link another folder / archive / package (`path`, optional `version`, `kind`) |
 | `DELETE` | `/api/assets/:id/files/:fileId` | Unlink a file (never touches the disk) |
 | `GET` | `/api/assets/:id/status` | Check if asset's `local_path` exists on disk |
+| `POST` | `/api/assets/bulk` | Apply one change to many assets (`set_category`/`category_id`, `add_tags`, `add_compatible_avatars`, `is_favorite`); never removes tags or avatars |
 | `POST` | `/api/assets/batch-status` | Batch check `local_path` existence on disk for multiple asset IDs |
 | `POST` | `/api/assets/:id/favorite` | Toggle or set asset favorite status (`is_favorite`) |
 | `POST` | `/api/assets/:id/open-folder` | Open asset's local folder in OS file explorer |
@@ -270,6 +271,15 @@ item for a week.
   name / variations / description / tags, and the Japanese name of your library avatars once their
   BOOTH page has been fetched (e.g. "キプフェル" for Kipfel).
 
+## Using the Library
+
+- **Click a card** to open it in a side drawer (Ctrl/middle-click opens the full page). The URL keeps `?asset=ID`.
+- **Grid / list** view and **S / M / L** card size are remembered per browser.
+- **Select** turns on multi-select: set a category, add a tag, mark as compatible with an avatar, or favorite many assets at once.
+- **Preview images**: click the square, drop an image on it, or paste one with Ctrl+V — in the add/edit form and in the asset view.
+- **Theme**: the sun/moon button in the header switches between Dark (default), Light and System; the choice is remembered per browser.
+- **Avatar pages** (`/avatars/:id`, listed in the sidebar) show everything compatible with an avatar, grouped by category.
+
 ## Running Tests & Verification
 
 ### Run Automated Backend Tests
@@ -308,4 +318,4 @@ Milestone numbers follow [PROJECT_SPEC.md](PROJECT_SPEC.md) section 15.
 - [x] **Milestone 7**: Data model v2 (category tree + management page, asset files & versions, avatar compatibility, draft status, automatic pre-migration backup)
 - [x] **Milestone 8**: Filesystem scanner + review screen (drafts, archive/version grouping, BOOTH id & compatibility hints, preview from cover image, ignore list)
 - [x] **Milestone 9**: BOOTH metadata import (lookup with cache & rate limit, category/tag/compat suggestions, preview download, bulk apply for drafts)
-- [ ] **Milestone 10**: UI refresh
+- [x] **Milestone 10**: UI refresh (shadcn/ui + lucide, square cards with S/M/L and list view, detail drawer, preview drop/paste, bulk edit, avatar pages)

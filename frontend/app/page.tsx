@@ -3,7 +3,6 @@
 import React, {
   useState,
   useEffect,
-  useCallback,
   useTransition,
   Suspense,
   useRef,
@@ -24,6 +23,8 @@ import {
   getAssets,
   getCategories,
   getTags,
+  getLibraryStats,
+  LibraryStats,
   toggleAssetFavorite,
   checkBackendHealth,
   AssetFilterParams,
@@ -37,6 +38,7 @@ function LibraryView() {
   // State
   const [categories, setCategories] = useState<Category[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [stats, setStats] = useState<LibraryStats | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
 
   // Filter States initialized from URL
@@ -77,7 +79,8 @@ function LibraryView() {
     return "recent";
   });
 
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(true);
@@ -146,69 +149,73 @@ function LibraryView() {
     router,
   ]);
 
-  // 3. Load categories and tags once
-  const loadInitialMetadata = useCallback(async () => {
-    setIsCategoriesLoading(true);
-    try {
-      const [cats, tags] = await Promise.all([getCategories(), getTags()]);
-      setCategories(cats);
-      setAvailableTags(tags.map((t: Tag) => t.name));
-      setIsConnected(true);
-    } catch {
-      setIsConnected(false);
-    } finally {
-      setIsCategoriesLoading(false);
-    }
-  }, []);
+  // 3. Load categories and tags (again on retry)
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getCategories(), getTags(), getLibraryStats()])
+      .then(([cats, tags, libraryStats]) => {
+        if (cancelled) return;
+        setCategories(cats);
+        setAvailableTags(tags.map((t: Tag) => t.name));
+        setStats(libraryStats);
+        setIsConnected(true);
+      })
+      .catch(() => {
+        if (!cancelled) setIsConnected(false);
+      })
+      .finally(() => {
+        if (!cancelled) setIsCategoriesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadToken]);
+
+  // 4. Fetch assets based on active filters. Loading is derived from whether
+  // the last completed request matches the current filters, so the effect
+  // never has to set state synchronously.
+  const filterParams: AssetFilterParams = {
+    category: selectedCategory !== "all" ? selectedCategory : undefined,
+    search: debouncedSearch.trim() || undefined,
+    tags: selectedTags.length > 0 ? selectedTags : undefined,
+    favorite: isFavoriteOnly ? true : undefined,
+    has_preview: hasPreview ? true : undefined,
+    has_booth: hasBooth ? true : undefined,
+    local_status: localStatus !== "all" ? localStatus : undefined,
+    sort: sort !== "recent" ? sort : undefined,
+  };
+  const filtersJson = JSON.stringify(filterParams);
+  const requestKey = `${filtersJson}#${reloadToken}`;
+  const isLoading = loadedKey !== requestKey;
 
   useEffect(() => {
-    loadInitialMetadata();
-  }, [loadInitialMetadata]);
+    let cancelled = false;
+    const params: AssetFilterParams = JSON.parse(filtersJson);
 
-  // 4. Fetch assets based on active filters
-  const loadAssets = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+    getAssets(params)
+      .then((data) => {
+        if (cancelled) return;
+        setAssets(data);
+        setError(null);
+        setIsConnected(true);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setIsConnected(false);
+        if (err instanceof Error) {
+          setError(err.message || "Failed to load assets from server");
+        } else {
+          setError("Unknown error while communicating with backend");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadedKey(requestKey);
+      });
 
-    try {
-      const filterParams: AssetFilterParams = {
-        category: selectedCategory !== "all" ? selectedCategory : undefined,
-        search: debouncedSearch.trim() || undefined,
-        tags: selectedTags.length > 0 ? selectedTags : undefined,
-        favorite: isFavoriteOnly ? true : undefined,
-        has_preview: hasPreview ? true : undefined,
-        has_booth: hasBooth ? true : undefined,
-        local_status: localStatus !== "all" ? localStatus : undefined,
-        sort: sort !== "recent" ? sort : undefined,
-      };
-
-      const data = await getAssets(filterParams);
-      setAssets(data);
-      setIsConnected(true);
-    } catch (err: unknown) {
-      setIsConnected(false);
-      if (err instanceof Error) {
-        setError(err.message || "Failed to load assets from server");
-      } else {
-        setError("Unknown error while communicating with backend");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [
-    selectedCategory,
-    debouncedSearch,
-    selectedTags,
-    isFavoriteOnly,
-    hasPreview,
-    hasBooth,
-    localStatus,
-    sort,
-  ]);
-
-  useEffect(() => {
-    loadAssets();
-  }, [loadAssets]);
+    return () => {
+      cancelled = true;
+    };
+  }, [filtersJson, requestKey]);
 
   // 5. Backend health check poll
   useEffect(() => {
@@ -250,9 +257,13 @@ function LibraryView() {
 
   // Optimistic favorite toggle
   const handleToggleFavorite = async (assetId: number, nextFav: boolean) => {
+    const adjustFavorites = (delta: number) =>
+      setStats((prev) => (prev ? { ...prev, favorites: prev.favorites + delta } : prev));
+
     setAssets((prev) =>
       prev.map((a) => (a.id === assetId ? { ...a, is_favorite: nextFav } : a))
     );
+    adjustFavorites(nextFav ? 1 : -1);
 
     try {
       await toggleAssetFavorite(assetId, nextFav);
@@ -262,12 +273,13 @@ function LibraryView() {
       setAssets((prev) =>
         prev.map((a) => (a.id === assetId ? { ...a, is_favorite: !nextFav } : a))
       );
+      adjustFavorites(nextFav ? -1 : 1);
     }
   };
 
   const handleRetry = () => {
-    loadInitialMetadata();
-    loadAssets();
+    setIsCategoriesLoading(true);
+    setReloadToken((t) => t + 1);
   };
 
   // Computed properties
@@ -280,8 +292,6 @@ function LibraryView() {
       hasBooth ||
       localStatus !== "all"
   );
-
-  const favoriteCount = assets.filter((a) => a.is_favorite).length;
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-950 text-neutral-100 selection:bg-cyan-500/20 selection:text-cyan-200">
@@ -301,13 +311,14 @@ function LibraryView() {
           onSelectCategory={(cat) => setSelectedCategory(cat)}
           isFavoriteOnly={isFavoriteOnly}
           onToggleFavoriteOnly={() => setIsFavoriteOnly((prev) => !prev)}
-          favoriteCount={favoriteCount}
+          favoriteCount={stats?.favorites}
           availableTags={availableTags}
           selectedTags={selectedTags}
           onToggleTag={handleToggleTag}
           onClearTags={handleClearTags}
           isLoading={isCategoriesLoading}
-          totalAssetsCount={assets.length}
+          totalAssetsCount={stats?.total}
+          categoryCounts={stats?.by_category}
         />
 
         {/* Center/Right Asset Browsing View */}

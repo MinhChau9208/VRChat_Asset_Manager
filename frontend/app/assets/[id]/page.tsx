@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -20,8 +20,12 @@ import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
 
 export default function AssetDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const id = params?.id as string;
+  return <AssetDetailView key={id} id={id} />;
+}
+
+function AssetDetailView({ id }: { id: string }) {
+  const router = useRouter();
 
   const [asset, setAsset] = useState<Asset | null>(null);
   const [fileStatus, setFileStatus] = useState<AssetStatus | null>(null);
@@ -48,48 +52,62 @@ export default function AssetDetailPage() {
     message: string;
   } | null>(null);
 
-  const loadData = useCallback(async () => {
-    if (!id) return;
+  // Initial state already represents "loading", and the component is keyed by
+  // id (navigating to another asset remounts it), so the effect only sets state
+  // from async callbacks. Retry resets state in loadData and bumps reloadToken.
+  const [reloadToken, setReloadToken] = useState(0);
 
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+
+    getAssetByID(id)
+      .then((assetData) => {
+        if (cancelled) return;
+        setAsset(assetData);
+        setIsLoading(false);
+
+        // If asset has a local path, check file existence status
+        if (assetData.local_path && assetData.local_path.trim() !== "") {
+          setIsCheckingStatus(true);
+          return getAssetStatus(id)
+            .then((status) => {
+              if (!cancelled) setFileStatus(status);
+            })
+            .catch((statusErr) => {
+              console.warn("Failed to check asset file status:", statusErr);
+              if (!cancelled) setFileStatus({ exists: false });
+            })
+            .finally(() => {
+              if (!cancelled) setIsCheckingStatus(false);
+            });
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setIsLoading(false);
+        const message = err instanceof Error ? err.message : "Failed to load asset";
+        if (message.toLowerCase().includes("not found")) {
+          setIsNotFound(true);
+        } else {
+          setErrorMessage(message);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, reloadToken]);
+
+  const loadData = () => {
     setIsLoading(true);
     setIsNotFound(false);
     setErrorMessage(null);
     setActionFeedback(null);
     setFileStatus(null);
     setPreviewImageError(false);
-
-    try {
-      const assetData = await getAssetByID(id);
-      setAsset(assetData);
-      setIsLoading(false);
-
-      // If asset has a local path, check file existence status
-      if (assetData.local_path && assetData.local_path.trim() !== "") {
-        setIsCheckingStatus(true);
-        try {
-          const status = await getAssetStatus(id);
-          setFileStatus(status);
-        } catch (statusErr) {
-          console.warn("Failed to check asset file status:", statusErr);
-          setFileStatus({ exists: false });
-        } finally {
-          setIsCheckingStatus(false);
-        }
-      }
-    } catch (err: unknown) {
-      setIsLoading(false);
-      const message = err instanceof Error ? err.message : "Failed to load asset";
-      if (message.toLowerCase().includes("not found")) {
-        setIsNotFound(true);
-      } else {
-        setErrorMessage(message);
-      }
-    }
-  }, [id]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+    setReloadToken((t) => t + 1);
+  };
 
   const handleSelectFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

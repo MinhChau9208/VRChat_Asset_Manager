@@ -266,6 +266,43 @@ func TestUpdateAsset(t *testing.T) {
 	}
 }
 
+// Editing metadata without sending preview_path (as the edit form does) must keep the preview.
+func TestUpdateAssetKeepsPreviewWhenOmitted(t *testing.T) {
+	mux, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	wCreate := doRequest(mux, http.MethodPost, "/api/assets", asset.CreateAssetRequest{
+		Name:        "With Preview",
+		PreviewPath: "data/previews/1.png",
+	})
+	var created asset.Asset
+	_ = json.NewDecoder(wCreate.Body).Decode(&created)
+
+	wUpdate := doRequest(mux, http.MethodPut, "/api/assets/"+strconvFormat(created.ID), map[string]any{
+		"name": "Renamed",
+		"tags": []string{},
+	})
+	if wUpdate.Code != http.StatusOK {
+		t.Fatalf("Expected 200 OK on update, got %d: %s", wUpdate.Code, wUpdate.Body.String())
+	}
+	var updated asset.Asset
+	_ = json.NewDecoder(wUpdate.Body).Decode(&updated)
+	if updated.PreviewPath != "data/previews/1.png" {
+		t.Errorf("Expected preview_path to be kept, got %q", updated.PreviewPath)
+	}
+
+	// Sending an explicit empty preview_path still clears it.
+	wClear := doRequest(mux, http.MethodPut, "/api/assets/"+strconvFormat(created.ID), map[string]any{
+		"name":         "Renamed",
+		"preview_path": "",
+	})
+	var cleared asset.Asset
+	_ = json.NewDecoder(wClear.Body).Decode(&cleared)
+	if cleared.PreviewPath != "" {
+		t.Errorf("Expected preview_path to be cleared, got %q", cleared.PreviewPath)
+	}
+}
+
 // 5. Delete Asset
 func TestDeleteAsset(t *testing.T) {
 	mux, cleanup := setupTestServer(t)
@@ -1283,4 +1320,30 @@ func TestFilter_PreviewBoothLocalStatus(t *testing.T) {
 	}
 
 	_ = previewsDir
+}
+
+// Stats counts the whole library regardless of filters.
+func TestLibraryStats(t *testing.T) {
+	mux, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	cat1, cat2 := int64(1), int64(2)
+	fav := true
+	doRequest(mux, http.MethodPost, "/api/assets", asset.CreateAssetRequest{Name: "A", CategoryID: &cat1, IsFavorite: &fav})
+	doRequest(mux, http.MethodPost, "/api/assets", asset.CreateAssetRequest{Name: "B", CategoryID: &cat1})
+	doRequest(mux, http.MethodPost, "/api/assets", asset.CreateAssetRequest{Name: "C", CategoryID: &cat2})
+	doRequest(mux, http.MethodPost, "/api/assets", asset.CreateAssetRequest{Name: "D"})
+
+	w := doRequest(mux, http.MethodGet, "/api/stats", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("Expected 200 OK, got %d: %s", w.Code, w.Body.String())
+	}
+	var stats asset.LibraryStats
+	_ = json.NewDecoder(w.Body).Decode(&stats)
+	if stats.Total != 4 || stats.Favorites != 1 {
+		t.Errorf("Expected total=4 favorites=1, got %+v", stats)
+	}
+	if stats.ByCategory["1"] != 2 || stats.ByCategory["2"] != 1 {
+		t.Errorf("Unexpected category counts: %+v", stats.ByCategory)
+	}
 }

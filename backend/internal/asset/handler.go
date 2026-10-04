@@ -97,6 +97,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/assets", h.Create)
 	mux.HandleFunc("PUT /api/assets/{id}", h.Update)
 	mux.HandleFunc("DELETE /api/assets/{id}", h.Delete)
+	mux.HandleFunc("GET /api/stats", h.Stats)
 	mux.HandleFunc("GET /api/tags", h.GetTags)
 	mux.HandleFunc("POST /api/tags", h.CreateTag)
 	mux.HandleFunc("POST /api/filesystem/pick-folder", h.PickFolder)
@@ -676,6 +677,16 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "asset deleted"})
+}
+
+// Stats handles GET /api/stats
+func (h *Handler) Stats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.repo.Stats(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load stats: "+err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, stats)
 }
 
 // GetTags handles GET /api/tags

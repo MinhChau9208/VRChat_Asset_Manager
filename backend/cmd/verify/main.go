@@ -152,10 +152,12 @@ func main() {
 		}
 	}
 
-	// 4. Verify Seeded Categories
+	// 4. Verify Seeded Categories (default tree after migration 000004; the
+	// user may add more, so only the defaults are required)
 	expectedSeeds := []string{
-		"Avatar", "Hair", "Clothes", "Shoes", "Accessory",
-		"Gimmick", "Texture", "Material", "Shader", "Other",
+		"Avatar", "Outfit", "Clothes", "Shoes", "Hair", "Accessory", "Ears & Tail",
+		"Face", "Eyes", "Expression", "Makeup", "Gimmick", "Prop", "Animation",
+		"Texture & Material", "Tool & Shader", "World", "Audio", "Other",
 	}
 
 	catRows, err := db.Query("SELECT id, name FROM categories ORDER BY id ASC")
@@ -173,20 +175,20 @@ func main() {
 			}
 		}
 
+		found := map[string]bool{}
+		for _, name := range foundSeeds {
+			found[name] = true
+		}
 		matches := true
-		if len(foundSeeds) != len(expectedSeeds) {
-			matches = false
-		} else {
-			for i, exp := range expectedSeeds {
-				if foundSeeds[i] != exp {
-					matches = false
-					break
-				}
+		for _, exp := range expectedSeeds {
+			if !found[exp] {
+				matches = false
+				break
 			}
 		}
 
 		if matches {
-			fmt.Printf("[PASS] 4. All 10 seeded categories verified: %s\n", strings.Join(foundSeeds, ", "))
+			fmt.Printf("[PASS] 4. All %d default categories verified: %s\n", len(expectedSeeds), strings.Join(foundSeeds, ", "))
 		} else {
 			fmt.Printf("[FAIL] 4. Seed categories mismatch. Found: %v, Expected: %v\n", foundSeeds, expectedSeeds)
 			allPassed = false
@@ -214,10 +216,10 @@ func main() {
 				// Verify clean db has all categories
 				var cleanCount int
 				_ = cleanDB.QueryRow("SELECT COUNT(*) FROM categories").Scan(&cleanCount)
-				if cleanCount == 10 {
+				if cleanCount == len(expectedSeeds) {
 					fmt.Println("[PASS] 5. Migrations execute cleanly and seed properly on a fresh database.")
 				} else {
-					fmt.Printf("[FAIL] 5. Clean database has %d categories, expected 10.\n", cleanCount)
+					fmt.Printf("[FAIL] 5. Clean database has %d categories, expected %d.\n", cleanCount, len(expectedSeeds))
 					allPassed = false
 				}
 			}

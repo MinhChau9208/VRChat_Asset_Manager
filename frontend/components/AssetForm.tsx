@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Asset,
   Category,
+  CompatAvatar,
   Tag,
   CreateAssetInput,
   UpdateAssetInput,
@@ -12,7 +13,9 @@ import {
   createAsset,
   updateAsset,
   pickFolder,
+  buildCategoryTree,
 } from "@/lib/api";
+import { CompatibleAvatarsInput } from "./CompatibleAvatarsInput";
 
 interface AssetFormProps {
   initialData?: Asset;
@@ -37,6 +40,9 @@ export const AssetForm: React.FC<AssetFormProps> = ({
   const [localPath, setLocalPath] = useState(initialData?.local_path || "");
   const [description, setDescription] = useState(initialData?.description || "");
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
+  const [compatibleAvatars, setCompatibleAvatars] = useState<CompatAvatar[]>(
+    initialData?.compatible_avatars || []
+  );
 
   // Tag input state
   const [tagInput, setTagInput] = useState("");
@@ -182,6 +188,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
         local_path: localPath.trim(),
         description: description.trim(),
         tags: tags,
+        compatible_avatars: compatibleAvatars,
       };
 
       let result: Asset;
@@ -289,11 +296,22 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               className="w-full rounded-lg border border-neutral-800 bg-neutral-950/80 px-3 py-2 text-xs sm:text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all cursor-pointer disabled:opacity-50"
             >
               <option value="">None / Uncategorized</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
+              {buildCategoryTree(categories).map((root) =>
+                root.children.length === 0 ? (
+                  <option key={root.id} value={root.id}>
+                    {root.name}
+                  </option>
+                ) : (
+                  <optgroup key={root.id} label={root.name}>
+                    <option value={root.id}>{root.name} (general)</option>
+                    {root.children.map((child) => (
+                      <option key={child.id} value={child.id}>
+                        {child.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )
+              )}
             </select>
             {isLoadingMetadata && (
               <p className="mt-1 text-[10px] text-neutral-500">
@@ -524,6 +542,15 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             </div>
           </div>
         )}
+
+        {/* Compatible Avatars */}
+        <div className="pt-2 border-t border-neutral-800/60">
+          <CompatibleAvatarsInput
+            value={compatibleAvatars}
+            onChange={setCompatibleAvatars}
+            selfId={initialData?.id}
+          />
+        </div>
       </div>
 
       {/* Form Action Buttons */}

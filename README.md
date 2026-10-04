@@ -48,7 +48,7 @@ go run .
 
 On startup, the backend automatically:
 1. Connects to SQLite at `data/app.db` (or `../data/app.db`).
-2. Applies all pending `.up.sql` migrations from `backend/migrations/`.
+2. Backs up an existing database to `data/backups/` if there are pending migrations, then applies all pending `.up.sql` migrations from `backend/migrations/`.
 3. Seeds default VRChat asset categories (`Avatar`, `Hair`, `Clothes`, etc.).
 4. Starts the HTTP server on port `8080`.
 
@@ -85,9 +85,14 @@ The frontend communicates with the Go backend using the `NEXT_PUBLIC_API_URL` en
 |---|---|---|
 | `GET` | `/health` | Server health check |
 | `GET` | `/api/health/db` | SQLite database connectivity health |
-| `GET` | `/api/categories` | List all asset categories |
-| `GET` | `/api/assets` | List assets (supports `search`, `category`, `tags`, `favorite`, `has_preview`, `has_booth`, `local_status`, `sort`) |
-| `GET` | `/api/assets/:id` | Retrieve single asset with category and tags |
+| `GET` | `/api/categories` | List categories in display order (`parent_id`, `sort_order`) |
+| `POST` | `/api/categories` | Create a category (`name`, optional `parent_id`, `sort_order`) |
+| `PUT` | `/api/categories/:id` | Rename / re-parent / reorder a category (two levels max) |
+| `DELETE` | `/api/categories/:id` | Delete a category without subcategories (its assets become uncategorized) |
+| `GET` | `/api/assets` | List assets (supports `search`, `category` (includes subcategories), `tags`, `favorite`, `has_preview`, `has_booth`, `local_status`, `sort`, `status` = `active` (default) / `draft` / `all`, `compatible_with` = avatar asset id) |
+| `GET` | `/api/assets/:id` | Retrieve single asset with category, tags, `files` and `compatible_avatars` |
+| `POST` | `/api/assets/:id/files` | Link another folder / archive / package (`path`, optional `version`, `kind`) |
+| `DELETE` | `/api/assets/:id/files/:fileId` | Unlink a file (never touches the disk) |
 | `GET` | `/api/assets/:id/status` | Check if asset's `local_path` exists on disk |
 | `POST` | `/api/assets/batch-status` | Batch check `local_path` existence on disk for multiple asset IDs |
 | `POST` | `/api/assets/:id/favorite` | Toggle or set asset favorite status (`is_favorite`) |
@@ -262,7 +267,7 @@ Milestone numbers follow [PROJECT_SPEC.md](PROJECT_SPEC.md) section 15.
 - [x] **Milestone 6**: Search + tags (tag creation/assignment, search across name/author/description/tags, category & multi-tag filters)
   - Extras done early from the future roadmap: favorites, sorting, has-preview / has-BOOTH / local-status filters, URL query persistence, library stats
 - [x] **Milestone 6.5**: Cleanup (edit no longer wipes preview, lint clean, sidebar counts use unfiltered stats)
-- [ ] **Milestone 7**: Data model v2 (category tree, asset files & versions, avatar compatibility, draft status)
+- [x] **Milestone 7**: Data model v2 (category tree + management page, asset files & versions, avatar compatibility, draft status, automatic pre-migration backup)
 - [ ] **Milestone 8**: Filesystem scanner + review screen
 - [ ] **Milestone 9**: BOOTH metadata import
 - [ ] **Milestone 10**: UI refresh

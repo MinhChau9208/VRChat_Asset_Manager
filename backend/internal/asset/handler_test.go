@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"vrchat-asset-manager/backend/internal/asset"
+	"vrchat-asset-manager/backend/internal/category"
 	"vrchat-asset-manager/backend/internal/database"
 	"vrchat-asset-manager/backend/migrations"
 )
@@ -60,6 +61,7 @@ func setupTestServerWithConfig(t *testing.T, opener asset.OpenerFunc) (*http.Ser
 
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
+	category.NewHandler(category.NewRepository(db.DB)).RegisterRoutes(mux)
 
 	cleanup := func() {
 		_ = db.Close()

@@ -59,6 +59,47 @@ func Connect(dbPath string) (*DB, error) {
 	return &DB{DB: conn}, nil
 }
 
+// PendingMigrations returns the .up.sql files that have not been applied yet.
+func (db *DB) PendingMigrations(migrationFS fs.FS) ([]string, error) {
+	var applied = map[string]bool{}
+	rows, err := db.Query("SELECT version FROM schema_migrations")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var v string
+			if err := rows.Scan(&v); err == nil {
+				applied[v] = true
+			}
+		}
+	}
+	// A missing schema_migrations table simply means nothing is applied yet.
+
+	entries, err := fs.ReadDir(migrationFS, ".")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read migrations directory: %w", err)
+	}
+
+	var pending []string
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".up.sql") && !applied[entry.Name()] {
+			pending = append(pending, entry.Name())
+		}
+	}
+	sort.Strings(pending)
+	return pending, nil
+}
+
+// Backup writes a consistent copy of the database to destPath using VACUUM INTO.
+func (db *DB) Backup(destPath string) error {
+	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		return fmt.Errorf("failed to create backup directory: %w", err)
+	}
+	if _, err := db.Exec("VACUUM INTO ?", destPath); err != nil {
+		return fmt.Errorf("failed to back up database: %w", err)
+	}
+	return nil
+}
+
 // Migrate applies all unapplied .sql migrations from the provided filesystem in lexical order.
 func (db *DB) Migrate(migrationFS fs.FS) error {
 	initQuery := `
@@ -123,30 +164,4 @@ func (db *DB) Migrate(migrationFS fs.FS) error {
 	}
 
 	return nil
-}
-
-// Category represents a category record.
-type Category struct {
-	ID        int64     `json:"id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-// GetCategories returns all categories currently in the database.
-func (db *DB) GetCategories() ([]Category, error) {
-	rows, err := db.Query("SELECT id, name, created_at FROM categories ORDER BY id ASC")
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var categories []Category
-	for rows.Next() {
-		var c Category
-		if err := rows.Scan(&c.ID, &c.Name, &c.CreatedAt); err != nil {
-			return nil, err
-		}
-		categories = append(categories, c)
-	}
-	return categories, rows.Err()
 }

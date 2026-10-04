@@ -1,10 +1,13 @@
 package database_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"vrchat-asset-manager/backend/internal/category"
 	"vrchat-asset-manager/backend/internal/database"
 	"vrchat-asset-manager/backend/migrations"
 )
@@ -42,32 +45,37 @@ func TestMigrationsAndSeedCategories(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	categories, err := db.GetCategories()
+	categories, err := category.NewRepository(db.DB).List(context.Background())
 	if err != nil {
-		t.Fatalf("GetCategories failed: %v", err)
+		t.Fatalf("List categories failed: %v", err)
 	}
 
-	expectedCategories := []string{
+	// Display order: each top-level category followed by its children ("> " prefix).
+	expected := []string{
 		"Avatar",
+		"Outfit", "> Clothes", "> Shoes",
 		"Hair",
-		"Clothes",
-		"Shoes",
-		"Accessory",
-		"Gimmick",
-		"Texture",
-		"Material",
-		"Shader",
+		"Accessory", "> Ears & Tail",
+		"Face", "> Eyes", "> Expression", "> Makeup",
+		"Gimmick", "> Prop",
+		"Animation",
+		"Texture & Material",
+		"Tool & Shader",
+		"World",
+		"Audio",
 		"Other",
 	}
 
-	if len(categories) != len(expectedCategories) {
-		t.Fatalf("Expected %d categories, got %d", len(expectedCategories), len(categories))
-	}
-
-	for i, expected := range expectedCategories {
-		if categories[i].Name != expected {
-			t.Errorf("Expected category[%d] to be %q, got %q", i, expected, categories[i].Name)
+	var got []string
+	for _, c := range categories {
+		if c.ParentID != nil {
+			got = append(got, "> "+c.Name)
+		} else {
+			got = append(got, c.Name)
 		}
+	}
+	if strings.Join(got, ", ") != strings.Join(expected, ", ") {
+		t.Errorf("Unexpected category tree:\n got: %v\nwant: %v", got, expected)
 	}
 }
 
@@ -196,19 +204,14 @@ func TestLiveDatabaseFile(t *testing.T) {
 		t.Fatalf("Failed to ping data/app.db: %v", err)
 	}
 
-	// 2. Verify all 10 seed categories
-	categories, err := db.GetCategories()
-	if err != nil {
+	// 2. Verify categories exist (the user may have edited them)
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM categories").Scan(&count); err != nil {
 		t.Fatalf("Failed to query categories from data/app.db: %v", err)
 	}
-
-	if len(categories) != 10 {
-		t.Fatalf("Expected 10 categories in data/app.db, found %d", len(categories))
+	if count == 0 {
+		t.Fatalf("Expected categories in data/app.db, found none")
 	}
-
-	t.Logf("Successfully verified %d seed categories in data/app.db:", len(categories))
-	for _, c := range categories {
-		t.Logf(" - [%d] %s (created_at: %s)", c.ID, c.Name, c.CreatedAt.Format("2006-01-02 15:04:05"))
-	}
+	t.Logf("data/app.db has %d categories", count)
 }
 

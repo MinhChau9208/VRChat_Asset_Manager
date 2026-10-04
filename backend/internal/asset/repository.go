@@ -115,9 +115,14 @@ func (r *Repository) Create(ctx context.Context, req CreateAssetRequest) (*Asset
 		isFav = *req.IsFavorite
 	}
 
+	status := req.Status
+	if status == "" {
+		status = "active"
+	}
+
 	insertQuery := `
-		INSERT INTO assets (name, category_id, author, booth_url, local_path, preview_path, description, is_favorite)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO assets (name, category_id, author, booth_url, local_path, preview_path, description, is_favorite, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	res, err := tx.ExecContext(ctx, insertQuery,
 		req.Name,
@@ -128,6 +133,7 @@ func (r *Repository) Create(ctx context.Context, req CreateAssetRequest) (*Asset
 		req.PreviewPath,
 		req.Description,
 		isFav,
+		status,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert asset: %w", err)
@@ -139,6 +145,14 @@ func (r *Repository) Create(ctx context.Context, req CreateAssetRequest) (*Asset
 	}
 
 	if _, err := r.syncAssetTags(ctx, tx, assetID, req.Tags); err != nil {
+		return nil, err
+	}
+
+	if err := syncPrimaryFile(ctx, tx, assetID, "", req.LocalPath); err != nil {
+		return nil, err
+	}
+
+	if err := syncCompat(ctx, tx, assetID, req.CompatibleAvatars); err != nil {
 		return nil, err
 	}
 
@@ -155,7 +169,7 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*Asset, error) {
 		SELECT 
 			a.id, a.name, a.category_id, c.name,
 			a.author, a.booth_url, a.local_path, a.preview_path, a.description,
-			a.is_favorite,
+			a.is_favorite, a.status,
 			a.created_at, a.updated_at
 		FROM assets a
 		LEFT JOIN categories c ON a.category_id = c.id
@@ -175,6 +189,7 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*Asset, error) {
 		&a.PreviewPath,
 		&a.Description,
 		&a.IsFavorite,
+		&a.Status,
 		&a.CreatedAt,
 		&a.UpdatedAt,
 	)
@@ -220,6 +235,13 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*Asset, error) {
 		}
 	}
 
+	if a.Files, err = r.ListFiles(ctx, id); err != nil {
+		return nil, err
+	}
+	if a.CompatibleAvatars, err = r.ListCompat(ctx, id); err != nil {
+		return nil, err
+	}
+
 	return &a, nil
 }
 
@@ -240,14 +262,33 @@ func (r *Repository) List(ctx context.Context, filters FilterParams) ([]Asset, e
 		args = append(args, searchTerm, searchTerm, searchTerm, searchTerm)
 	}
 
+	// A category matches itself and its subcategories; it may be given by id or name.
 	if filters.Category != "" && strings.ToLower(filters.Category) != "all" {
-		if catID, err := strconv.ParseInt(filters.Category, 10, 64); err == nil {
-			conditions = append(conditions, "(a.category_id = ? OR c.name = ? COLLATE NOCASE)")
-			args = append(args, catID, filters.Category)
-		} else {
-			conditions = append(conditions, "c.name = ? COLLATE NOCASE")
-			args = append(args, filters.Category)
+		catID, err := strconv.ParseInt(filters.Category, 10, 64)
+		if err != nil {
+			catID = -1
 		}
+		conditions = append(conditions, `a.category_id IN (
+			SELECT id FROM categories WHERE id = ? OR name = ? COLLATE NOCASE
+			UNION
+			SELECT id FROM categories WHERE parent_id IN (
+				SELECT id FROM categories WHERE id = ? OR name = ? COLLATE NOCASE
+			)
+		)`)
+		args = append(args, catID, filters.Category, catID, filters.Category)
+	}
+
+	switch strings.ToLower(filters.Status) {
+	case "all":
+	case "draft":
+		conditions = append(conditions, "a.status = 'draft'")
+	default:
+		conditions = append(conditions, "a.status = 'active'")
+	}
+
+	if filters.CompatibleWith != nil {
+		conditions = append(conditions, "EXISTS (SELECT 1 FROM asset_compat ac WHERE ac.asset_id = a.id AND ac.avatar_asset_id = ?)")
+		args = append(args, *filters.CompatibleWith)
 	}
 
 	// Combine single Tag and multiple Tags slice with AND semantics
@@ -327,7 +368,7 @@ func (r *Repository) List(ctx context.Context, filters FilterParams) ([]Asset, e
 		SELECT 
 			a.id, a.name, a.category_id, c.name,
 			a.author, a.booth_url, a.local_path, a.preview_path, a.description,
-			a.is_favorite,
+			a.is_favorite, a.status,
 			a.created_at, a.updated_at
 		FROM assets a
 		LEFT JOIN categories c ON a.category_id = c.id
@@ -360,6 +401,7 @@ func (r *Repository) List(ctx context.Context, filters FilterParams) ([]Asset, e
 			&a.PreviewPath,
 			&a.Description,
 			&a.IsFavorite,
+			&a.Status,
 			&a.CreatedAt,
 			&a.UpdatedAt,
 		)
@@ -451,14 +493,16 @@ func (r *Repository) List(ctx context.Context, filters FilterParams) ([]Asset, e
 
 // Update modifies an existing asset and updates its associated tags.
 func (r *Repository) Update(ctx context.Context, id int64, req UpdateAssetRequest) (*Asset, error) {
-	// Check if asset exists
-	var exists bool
-	err := r.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM assets WHERE id = ?)", id).Scan(&exists)
+	// Check if asset exists (and remember fields that drive side effects)
+	var oldName, oldLocalPath string
+	err := r.db.QueryRowContext(ctx,
+		"SELECT name, COALESCE(local_path, '') FROM assets WHERE id = ?", id,
+	).Scan(&oldName, &oldLocalPath)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to check asset existence: %w", err)
-	}
-	if !exists {
-		return nil, ErrNotFound
 	}
 
 	if req.CategoryID != nil {
@@ -486,6 +530,7 @@ func (r *Repository) Update(ctx context.Context, id int64, req UpdateAssetReques
 		UPDATE assets 
 		SET name = ?, category_id = ?, author = ?, booth_url = ?, local_path = ?, preview_path = COALESCE(?, preview_path), description = ?,
 		    is_favorite = COALESCE(?, is_favorite),
+		    status = COALESCE(?, status),
 		    updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
 	`
@@ -498,6 +543,7 @@ func (r *Repository) Update(ctx context.Context, id int64, req UpdateAssetReques
 		req.PreviewPath,
 		req.Description,
 		isFavVal,
+		req.Status,
 		id,
 	)
 	if err != nil {
@@ -507,6 +553,25 @@ func (r *Repository) Update(ctx context.Context, id int64, req UpdateAssetReques
 	if req.Tags != nil {
 		if _, err := r.syncAssetTags(ctx, tx, id, req.Tags); err != nil {
 			return nil, err
+		}
+	}
+
+	if err := syncPrimaryFile(ctx, tx, id, oldLocalPath, req.LocalPath); err != nil {
+		return nil, err
+	}
+
+	if req.CompatibleAvatars != nil {
+		if err := syncCompat(ctx, tx, id, *req.CompatibleAvatars); err != nil {
+			return nil, err
+		}
+	}
+
+	// Keep compatibility labels in step when an avatar is renamed.
+	if req.Name != oldName {
+		_, err := tx.ExecContext(ctx,
+			"UPDATE OR IGNORE asset_compat SET avatar_name = ? WHERE avatar_asset_id = ?", req.Name, id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to rename avatar in compatibility list: %w", err)
 		}
 	}
 
@@ -684,14 +749,14 @@ func (r *Repository) Stats(ctx context.Context) (*LibraryStats, error) {
 	stats := &LibraryStats{ByCategory: map[string]int{}}
 
 	err := r.db.QueryRowContext(ctx,
-		"SELECT COUNT(*), COALESCE(SUM(is_favorite), 0) FROM assets",
+		"SELECT COUNT(*), COALESCE(SUM(is_favorite), 0) FROM assets WHERE status = 'active'",
 	).Scan(&stats.Total, &stats.Favorites)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count assets: %w", err)
 	}
 
 	rows, err := r.db.QueryContext(ctx,
-		"SELECT category_id, COUNT(*) FROM assets WHERE category_id IS NOT NULL GROUP BY category_id",
+		"SELECT category_id, COUNT(*) FROM assets WHERE category_id IS NOT NULL AND status = 'active' GROUP BY category_id",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count assets by category: %w", err)

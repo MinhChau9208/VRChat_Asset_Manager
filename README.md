@@ -104,6 +104,9 @@ The frontend communicates with the Go backend using the `NEXT_PUBLIC_API_URL` en
 | `PUT` | `/api/assets/:id` | Update an existing asset (omitting `preview_path` keeps the current preview) |
 | `DELETE` | `/api/assets/:id` | Delete an asset record (never touches `local_path`) |
 | `GET` | `/api/stats` | Unfiltered library counts (`total`, `favorites`, `drafts`, `by_category`) |
+| `GET` | `/api/booth/lookup?url=` | Fetch a BOOTH item (cached 7 days; `refresh=1` to re-fetch) and return suggestions: name, shop, category, tags, compatible avatars, images |
+| `POST` | `/api/booth/preview` | Download a BOOTH image (`{"asset_id", "url"}`, pximg.net only) as the asset preview |
+| `POST` | `/api/booth/apply` | Fill assets from their BOOTH links (`{"asset_ids", "include_tags"}`); never overwrites an existing author/category/preview |
 | `GET` | `/api/scanner/config` | Scanner settings (library roots, ignore list, archive folders, folder → category map, dependency BOOTH ids) |
 | `PUT` | `/api/scanner/config` | Save scanner settings |
 | `POST` | `/api/scanner/scan` | Scan the library roots: new assets become drafts, new files of known assets are linked to them |
@@ -253,6 +256,20 @@ Open **Scan & Review** in the sidebar (`/review`):
    - `AvatarPass` (and anything in **Never scan**) is never opened.
 3. Review the drafts: accept, edit, change category in bulk, or ignore. Re-scanning only reports what is new.
 
+## Importing From BOOTH
+
+The app only contacts booth.pm when you press a button, at most once per second, and caches each
+item for a week.
+
+- **Add / Edit form** → paste a BOOTH URL → **Fetch from BOOTH** → pick the preview image, name, author,
+  category, tags and compatible avatars to copy → save. The chosen image is downloaded into
+  `data/previews/` (never hotlinked).
+- **Scan & Review** → select drafts → **🛒 Fetch BOOTH info**, or **⤓ fetch info** on one draft. Drafts without
+  a link get a "search on BOOTH ↗" shortcut.
+- Compatible avatars are matched by BOOTH links in the description, avatar names in the
+  name / variations / description / tags, and the Japanese name of your library avatars once their
+  BOOTH page has been fetched (e.g. "キプフェル" for Kipfel).
+
 ## Running Tests & Verification
 
 ### Run Automated Backend Tests
@@ -290,5 +307,5 @@ Milestone numbers follow [PROJECT_SPEC.md](PROJECT_SPEC.md) section 15.
 - [x] **Milestone 6.5**: Cleanup (edit no longer wipes preview, lint clean, sidebar counts use unfiltered stats)
 - [x] **Milestone 7**: Data model v2 (category tree + management page, asset files & versions, avatar compatibility, draft status, automatic pre-migration backup)
 - [x] **Milestone 8**: Filesystem scanner + review screen (drafts, archive/version grouping, BOOTH id & compatibility hints, preview from cover image, ignore list)
-- [ ] **Milestone 9**: BOOTH metadata import
+- [x] **Milestone 9**: BOOTH metadata import (lookup with cache & rate limit, category/tag/compat suggestions, preview download, bulk apply for drafts)
 - [ ] **Milestone 10**: UI refresh

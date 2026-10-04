@@ -236,3 +236,64 @@ func TestCompatibleAvatars(t *testing.T) {
 		t.Errorf("unknown avatar asset should be rejected, got %d", w.Code)
 	}
 }
+
+func TestBulkUpdate(t *testing.T) {
+	mux, cleanup := setupTestServer(t)
+	defer cleanup()
+
+	kipfel := createAsset(t, mux, map[string]any{"name": "Kipfel"})
+	a := createAsset(t, mux, map[string]any{"name": "Dress", "tags": []string{"cute"}, "category_id": 3})
+	b := createAsset(t, mux, map[string]any{"name": "Hat", "compatible_avatars": []map[string]any{{"avatar_name": "Manuka"}}})
+
+	w := doRequest(mux, http.MethodPost, "/api/assets/bulk", map[string]any{
+		"asset_ids":              []int64{a.ID, b.ID},
+		"set_category":           true,
+		"category_id":            5,
+		"add_tags":               []string{"Kipfel", "cute"},
+		"add_compatible_avatars": []map[string]any{{"avatar_asset_id": kipfel.ID}},
+		"is_favorite":            true,
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("bulk failed %d: %s", w.Code, w.Body.String())
+	}
+
+	ga, gb := getAsset(t, mux, a.ID), getAsset(t, mux, b.ID)
+	for _, x := range []asset.Asset{ga, gb} {
+		if x.CategoryID == nil || *x.CategoryID != 5 || !x.IsFavorite {
+			t.Errorf("%s: category/favorite not applied: %+v", x.Name, x)
+		}
+	}
+	if len(ga.Tags) != 2 || len(gb.Tags) != 2 {
+		t.Errorf("tags should be added without duplicates: %v / %v", ga.Tags, gb.Tags)
+	}
+	if len(gb.CompatibleAvatars) != 2 {
+		t.Errorf("compatibility should be added, keeping Manuka: %+v", gb.CompatibleAvatars)
+	}
+	if ga.Name != "Dress" {
+		t.Errorf("bulk must not touch other fields, got name %q", ga.Name)
+	}
+
+	// Only the fields that are set change: no category change here.
+	doRequest(mux, http.MethodPost, "/api/assets/bulk", map[string]any{"asset_ids": []int64{a.ID}, "add_tags": []string{"new"}})
+	if got := getAsset(t, mux, a.ID); got.CategoryID == nil || *got.CategoryID != 5 {
+		t.Errorf("category should be untouched without set_category")
+	}
+
+	// Clearing the category.
+	doRequest(mux, http.MethodPost, "/api/assets/bulk", map[string]any{"asset_ids": []int64{a.ID}, "set_category": true, "category_id": nil})
+	if got := getAsset(t, mux, a.ID); got.CategoryID != nil {
+		t.Errorf("category should be cleared")
+	}
+
+	for name, body := range map[string]map[string]any{
+		"empty ids":        {"asset_ids": []int64{}},
+		"unknown category": {"asset_ids": []int64{a.ID}, "set_category": true, "category_id": 9999},
+	} {
+		if w := doRequest(mux, http.MethodPost, "/api/assets/bulk", body); w.Code != http.StatusBadRequest {
+			t.Errorf("%s: expected 400, got %d", name, w.Code)
+		}
+	}
+	if w := doRequest(mux, http.MethodPost, "/api/assets/bulk", map[string]any{"asset_ids": []int64{9999}, "add_tags": []string{"x"}}); w.Code != http.StatusNotFound {
+		t.Errorf("unknown asset: expected 404, got %d", w.Code)
+	}
+}

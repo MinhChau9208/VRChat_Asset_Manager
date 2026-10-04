@@ -66,31 +66,38 @@ func (r *Repository) syncAssetTags(ctx context.Context, tx *sql.Tx, assetID int6
 		return nil, fmt.Errorf("failed to clear asset tags: %w", err)
 	}
 
-	for _, tagName := range normalized {
+	if err := addAssetTags(ctx, tx, assetID, normalized); err != nil {
+		return nil, err
+	}
+	return normalized, nil
+}
+
+// addAssetTags links tags to an asset (creating them if needed), keeping existing links.
+func addAssetTags(ctx context.Context, tx *sql.Tx, assetID int64, tags []string) error {
+	for _, tagName := range normalizeTags(tags) {
 		// Check if tag already exists case-insensitively
 		var tagID int64
 		err := tx.QueryRowContext(ctx, "SELECT id FROM tags WHERE name = ? COLLATE NOCASE", tagName).Scan(&tagID)
 		if errors.Is(err, sql.ErrNoRows) {
 			res, err := tx.ExecContext(ctx, "INSERT INTO tags (name) VALUES (?)", tagName)
 			if err != nil {
-				return nil, fmt.Errorf("failed to insert tag %q: %w", tagName, err)
+				return fmt.Errorf("failed to insert tag %q: %w", tagName, err)
 			}
 			tagID, err = res.LastInsertId()
 			if err != nil {
-				return nil, fmt.Errorf("failed to get tag ID for %q: %w", tagName, err)
+				return fmt.Errorf("failed to get tag ID for %q: %w", tagName, err)
 			}
 		} else if err != nil {
-			return nil, fmt.Errorf("failed to check tag %q: %w", tagName, err)
+			return fmt.Errorf("failed to check tag %q: %w", tagName, err)
 		}
 
 		// Link tag to asset
 		_, err = tx.ExecContext(ctx, "INSERT OR IGNORE INTO asset_tags (asset_id, tag_id) VALUES (?, ?)", assetID, tagID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to link tag %q to asset: %w", tagName, err)
+			return fmt.Errorf("failed to link tag %q to asset: %w", tagName, err)
 		}
 	}
-
-	return normalized, nil
+	return nil
 }
 
 // Create inserts a new asset and associates its tags in a single transaction.

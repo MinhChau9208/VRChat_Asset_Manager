@@ -215,7 +215,11 @@ func syncCompat(ctx context.Context, q sqlExecer, assetID int64, avatars []Compa
 	if _, err := q.ExecContext(ctx, "DELETE FROM asset_compat WHERE asset_id = ?", assetID); err != nil {
 		return fmt.Errorf("failed to clear compatibility: %w", err)
 	}
+	return addCompat(ctx, q, assetID, avatars)
+}
 
+// addCompat adds compatibility entries, keeping existing ones.
+func addCompat(ctx context.Context, q sqlExecer, assetID int64, avatars []CompatAvatar) error {
 	for _, c := range avatars {
 		name := strings.TrimSpace(c.AvatarName)
 		if c.AvatarAssetID != nil {

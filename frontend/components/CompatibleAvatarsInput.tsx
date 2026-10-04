@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Asset, CompatAvatar, getAssets } from "@/lib/api";
+import { UserRound, X } from "lucide-react";
 
 interface CompatibleAvatarsInputProps {
   value: CompatAvatar[];
@@ -84,7 +85,7 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
               }`}
               title={v.avatar_asset_id !== null ? "Avatar in your library" : "Avatar not in your library"}
             >
-              <span>👤</span>
+              <UserRound className="size-3.5" />
               <span>{v.avatar_name}</span>
               <button
                 type="button"
@@ -92,7 +93,7 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
                 className="text-neutral-400 hover:text-rose-400 transition-colors cursor-pointer p-0.5"
                 title={`Remove ${v.avatar_name}`}
               >
-                ✕
+                <X className="size-3.5" />
               </button>
             </span>
           ))}

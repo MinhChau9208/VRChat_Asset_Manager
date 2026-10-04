@@ -2,176 +2,206 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { Check, Heart, TriangleAlert } from "lucide-react";
 import { Asset, getAssetPreviewUrl } from "@/lib/api";
+import { CategoryIcon } from "@/lib/categoryIcon";
+import { cn } from "@/lib/utils";
+
+export type CardSize = "sm" | "md" | "lg";
+export type ViewMode = "grid" | "list";
 
 interface AssetCardProps {
   asset: Asset;
+  size?: CardSize;
+  view?: ViewMode;
   onToggleFavorite?: (assetId: number, nextFav: boolean) => void;
+  /** Opens the asset in place (drawer). Modifier-clicks still follow the link. */
+  onOpen?: (asset: Asset) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (asset: Asset) => void;
 }
 
-export const AssetCard: React.FC<AssetCardProps> = ({ asset, onToggleFavorite }) => {
+export function assetPreviewSrc(asset: Asset): string | null {
+  if (!asset.preview_path) return null;
+  return /^https?:\/\//.test(asset.preview_path)
+    ? asset.preview_path
+    : getAssetPreviewUrl(asset.id, asset.updated_at);
+}
+
+function isModifiedClick(e: React.MouseEvent) {
+  return e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0;
+}
+
+export const AssetCard: React.FC<AssetCardProps> = ({
+  asset,
+  size = "md",
+  view = "grid",
+  onToggleFavorite,
+  onOpen,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+}) => {
   const [imageError, setImageError] = useState(false);
-  // Only used when no parent handler owns the favorite state.
-  const [localFav, setLocalFav] = useState<boolean | null>(null);
-  const [togglingFav, setTogglingFav] = useState(false);
-  const isFav = onToggleFavorite ? Boolean(asset.is_favorite) : localFav ?? Boolean(asset.is_favorite);
+  const src = assetPreviewSrc(asset);
+  const showImage = Boolean(src && !imageError);
+  const categoryName = asset.category?.name;
+  const missing = Boolean(asset.local_path) && asset.local_file_exists === false;
 
-  const handleFavoriteClick = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (togglingFav) return;
-
-    const nextVal = !isFav;
-    if (onToggleFavorite) {
-      // Parent applies the optimistic update and reverts on failure.
-      onToggleFavorite(asset.id, nextVal);
-      return;
-    }
-
-    setLocalFav(nextVal);
-    setTogglingFav(true);
-    try {
-      const { toggleAssetFavorite } = await import("@/lib/api");
-      await toggleAssetFavorite(asset.id, nextVal);
-    } catch (err) {
-      console.error("Failed to toggle favorite:", err);
-      setLocalFav(!nextVal); // Revert on failure
-    } finally {
-      setTogglingFav(false);
+  const handleClick = (e: React.MouseEvent) => {
+    if (isModifiedClick(e)) return;
+    if (selectable && onToggleSelect) {
+      e.preventDefault();
+      onToggleSelect(asset);
+    } else if (onOpen) {
+      e.preventDefault();
+      onOpen(asset);
     }
   };
 
-  const categoryName = asset.category?.name || "Asset";
-  const previewSrc = asset.preview_path
-    ? asset.preview_path.startsWith("http://") || asset.preview_path.startsWith("https://")
-      ? asset.preview_path
-      : getAssetPreviewUrl(asset.id, asset.updated_at)
-    : null;
-  const hasPreview = Boolean(previewSrc && !imageError);
+  const favoriteButton = onToggleFavorite && (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onToggleFavorite(asset.id, !asset.is_favorite);
+      }}
+      aria-label={asset.is_favorite ? "Remove from favorites" : "Add to favorites"}
+      className={cn(
+        "flex size-8 items-center justify-center rounded-full border backdrop-blur-sm transition-all",
+        asset.is_favorite
+          ? "border-rose-500/70 bg-rose-950/80 text-rose-400"
+          : "border-white/10 bg-black/50 text-white/70 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-rose-300"
+      )}
+    >
+      <Heart className={cn("size-4", asset.is_favorite && "fill-current")} />
+    </button>
+  );
 
+  const selectBox = selectable && (
+    <span
+      className={cn(
+        "flex size-6 items-center justify-center rounded-md border-2 transition-colors",
+        selected ? "border-primary bg-primary text-primary-foreground" : "border-white/60 bg-black/40"
+      )}
+    >
+      {selected && <Check className="size-4" strokeWidth={3} />}
+    </span>
+  );
+
+  const thumbnail = (className: string) => (
+    <div className={cn("relative overflow-hidden bg-muted/40 flex items-center justify-center", className)}>
+      {showImage && src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt={asset.name}
+          onError={() => setImageError(true)}
+          loading="lazy"
+          className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+        />
+      ) : (
+        <CategoryIcon name={categoryName} className="size-1/3 max-h-12 max-w-12 text-muted-foreground/40" strokeWidth={1.5} />
+      )}
+    </div>
+  );
+
+  // ---- List row ----
+  if (view === "list") {
+    return (
+      <Link
+        href={`/assets/${asset.id}`}
+        onClick={handleClick}
+        className={cn(
+          "group flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors",
+          selected ? "border-primary/60 bg-primary/10" : "border-transparent hover:border-border hover:bg-card/60"
+        )}
+      >
+        {selectBox}
+        {thumbnail("size-12 shrink-0 rounded-md")}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium text-foreground" title={asset.name}>
+            {asset.name}
+          </div>
+          <div className="truncate text-xs text-muted-foreground">{asset.author || "Unknown author"}</div>
+        </div>
+        <div className="hidden w-40 items-center gap-1.5 text-xs text-muted-foreground md:flex">
+          <CategoryIcon name={categoryName} className="size-3.5 shrink-0" />
+          <span className="truncate">{asset.category?.name ?? "Uncategorized"}</span>
+        </div>
+        <div className="hidden w-48 gap-1 overflow-hidden lg:flex">
+          {asset.tags.slice(0, 2).map((t) => (
+            <span key={t} className="truncate rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+              #{t}
+            </span>
+          ))}
+        </div>
+        {missing && (
+          <span title="Files missing from disk">
+            <TriangleAlert className="size-4 text-amber-400" />
+          </span>
+        )}
+        <div className="w-8">{favoriteButton}</div>
+      </Link>
+    );
+  }
+
+  // ---- Grid card ----
   return (
     <Link
       href={`/assets/${asset.id}`}
-      className="group flex flex-col rounded-xl border border-neutral-800/80 bg-neutral-900/60 overflow-hidden hover:border-cyan-500/50 hover:bg-neutral-900/90 hover:shadow-lg hover:shadow-cyan-950/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+      onClick={handleClick}
+      className={cn(
+        "group flex flex-col overflow-hidden rounded-xl border bg-card/50 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        selected
+          ? "border-primary ring-2 ring-primary/40"
+          : "border-border hover:border-primary/40 hover:bg-card hover:shadow-lg hover:shadow-black/30"
+      )}
     >
-      {/* Preview Area */}
-      <div className="relative aspect-[16/10] w-full bg-neutral-950 overflow-hidden flex items-center justify-center border-b border-neutral-800/60">
-        {hasPreview && previewSrc ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previewSrc}
-            alt={asset.name}
-            onError={() => setImageError(true)}
-            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
-          />
-        ) : (
-          /* Polished Aesthetic Placeholder */
-          <div className="flex flex-col items-center justify-center gap-1 text-neutral-600 group-hover:text-cyan-400/80 transition-colors">
-            <div className="h-10 w-10 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center text-lg">
-              📦
-            </div>
-            <span className="text-[10px] uppercase font-mono tracking-wider text-neutral-500">
-              {categoryName}
-            </span>
-          </div>
-        )}
-
-        {/* Favorite Button on top-left */}
-        <div className="absolute top-2 left-2 z-10">
-          <button
-            type="button"
-            onClick={handleFavoriteClick}
-            aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
-            title={isFav ? "Favorited" : "Add to favorites"}
-            className={`flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold border transition-all duration-200 ${
-              isFav
-                ? "bg-rose-950/80 border-rose-500/80 text-rose-400 shadow-sm shadow-rose-900/50 scale-105"
-                : "bg-neutral-950/70 border-neutral-800 text-neutral-400 opacity-60 group-hover:opacity-100 hover:text-rose-400 hover:border-neutral-700 backdrop-blur-sm"
-            }`}
+      <div className="relative">
+        {thumbnail("aspect-square w-full")}
+        <div className="absolute left-2 top-2">{selectBox}</div>
+        <div className="absolute right-2 top-2">{favoriteButton}</div>
+        {missing && (
+          <span
+            className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-xs text-amber-300 backdrop-blur-sm"
+            title="Files missing from disk"
           >
-            {isFav ? "♥" : "♡"}
-          </button>
-        </div>
-
-        {/* Category Badge overlay on top-right */}
-        <div className="absolute top-2 right-2">
-          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-neutral-950/80 border border-neutral-800 text-neutral-300 backdrop-blur-sm">
-            {categoryName}
+            <TriangleAlert className="size-3.5" /> Missing
           </span>
-        </div>
-
-        {/* Local file status badge on bottom-left of preview */}
-        {asset.local_path && (
-          <div className="absolute bottom-2 left-2">
-            {asset.local_file_exists ? (
-              <span
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-mono font-medium bg-neutral-950/80 border border-emerald-800/60 text-emerald-400 backdrop-blur-sm"
-                title="Local file exists on disk"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Local
-              </span>
-            ) : (
-              <span
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-mono font-medium bg-neutral-950/80 border border-amber-800/60 text-amber-400 backdrop-blur-sm"
-                title="Local path configured but missing on disk"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                Missing
-              </span>
-            )}
-          </div>
         )}
       </div>
 
-      {/* Card Content */}
-      <div className="flex flex-1 flex-col p-3.5 justify-between gap-2.5">
-        <div>
-          {/* Asset Title */}
-          <h3
-            className="text-sm font-semibold text-white tracking-tight line-clamp-1 group-hover:text-cyan-300 transition-colors"
-            title={asset.name}
-          >
-            {asset.name}
-          </h3>
-
-          {/* Author */}
-          {asset.author ? (
-            <p className="text-xs text-neutral-400 truncate mt-0.5">
-              by <span className="text-neutral-300">@{asset.author}</span>
-            </p>
-          ) : (
-            <p className="text-xs text-neutral-600 italic mt-0.5">
-              Unknown author
-            </p>
+      <div className={cn("flex flex-1 flex-col gap-1", size === "sm" ? "p-2" : "p-3")}>
+        <h3
+          className={cn(
+            "font-medium leading-snug text-foreground group-hover:text-primary",
+            size === "sm" ? "line-clamp-1 text-xs" : "line-clamp-2 text-sm"
           )}
-        </div>
-
-        {/* Tags */}
-        <div className="flex flex-wrap gap-1 items-center min-h-[22px]">
-          {asset.tags && asset.tags.length > 0 ? (
-            <>
-              {asset.tags.slice(0, 3).map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-neutral-800/80 text-neutral-400 border border-neutral-700/50"
-                >
-                  #{tag}
-                </span>
-              ))}
-              {asset.tags.length > 3 && (
-                <span className="text-[10px] font-mono text-neutral-500">
-                  +{asset.tags.length - 3}
-                </span>
-              )}
-            </>
-          ) : (
-            <span className="text-[10px] text-neutral-600 font-mono">
-              no tags
+          title={asset.name}
+        >
+          {asset.name}
+        </h3>
+        {size !== "sm" && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CategoryIcon name={categoryName} className="size-3.5 shrink-0" />
+            <span className="truncate">
+              {asset.category?.name ?? "Uncategorized"}
+              {asset.author && <> · {asset.author}</>}
             </span>
-          )}
-        </div>
+          </div>
+        )}
+        {size === "lg" && asset.tags.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {asset.tags.slice(0, 4).map((t) => (
+              <span key={t} className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                #{t}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </Link>
   );

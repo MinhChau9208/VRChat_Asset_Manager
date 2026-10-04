@@ -13,6 +13,7 @@ import {
   getLibraryStats,
   updateCategory,
 } from "@/lib/api";
+import { Trash2 } from "lucide-react";
 
 const inputClass =
   "rounded-lg border border-neutral-800 bg-neutral-950/80 px-3 py-1.5 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500";
@@ -176,7 +177,7 @@ export default function CategoriesPage() {
               {cat.name}
             </button>
           )}
-          <div className="text-[11px] text-neutral-500">
+          <div className="text-xs text-neutral-500">
             {count} asset{count === 1 ? "" : "s"}
             {node && node.children.length > 0 && ` · ${node.children.length} subcategories`}
           </div>
@@ -209,7 +210,7 @@ export default function CategoriesPage() {
           className={`${iconButtonClass} hover:text-rose-400`}
           title={node && node.children.length > 0 ? "Move or delete its subcategories first" : "Delete"}
         >
-          🗑
+          <Trash2 className="size-4" />
         </button>
       </li>
     );

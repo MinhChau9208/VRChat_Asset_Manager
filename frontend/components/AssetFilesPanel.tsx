@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Asset, AssetFile, addAssetFile, deleteAssetFile, getAssetByID, pickFolder } from "@/lib/api";
+import { File as FileIcon, FileArchive, Folder, FolderOpen, Package, X } from "lucide-react";
 
 interface AssetFilesPanelProps {
   asset: Asset;
@@ -9,11 +10,11 @@ interface AssetFilesPanelProps {
   onChanged: (asset: Asset) => void;
 }
 
-const KIND_LABELS: Record<AssetFile["kind"], string> = {
-  folder: "📁 Folder",
-  archive: "🗜️ Archive",
-  unitypackage: "📦 Package",
-  file: "📄 File",
+const KIND_LABELS: Record<AssetFile["kind"], React.ReactNode> = {
+  folder: <><Folder className="inline size-3.5" /> Folder</>,
+  archive: <><FileArchive className="inline size-3.5" /> Archive</>,
+  unitypackage: <><Package className="inline size-3.5" /> Package</>,
+  file: <><FileIcon className="inline size-3.5" /> File</>,
 };
 
 /**
@@ -69,14 +70,14 @@ export const AssetFilesPanel: React.FC<AssetFilesPanelProps> = ({ asset, onChang
   return (
     <div className="p-3.5 rounded-xl bg-neutral-950/80 border border-neutral-800 space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] uppercase font-mono tracking-wider text-neutral-400 font-semibold">
+        <span className="text-xs uppercase font-mono tracking-wider text-neutral-400 font-semibold">
           Files & Versions ({files.length})
         </span>
         {!isAdding && (
           <button
             type="button"
             onClick={() => setIsAdding(true)}
-            className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+            className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
           >
             + Link file
           </button>
@@ -94,7 +95,7 @@ export const AssetFilesPanel: React.FC<AssetFilesPanelProps> = ({ asset, onChang
             className="flex items-start gap-2 rounded-lg bg-neutral-900/60 border border-neutral-800 p-2"
           >
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
                 <span className="text-neutral-300">{KIND_LABELS[f.kind]}</span>
                 {f.version && (
                   <span className="px-1.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-800/60 font-mono">
@@ -110,7 +111,7 @@ export const AssetFilesPanel: React.FC<AssetFilesPanelProps> = ({ asset, onChang
                   {f.exists ? "● on disk" : "● missing"}
                 </span>
               </div>
-              <div className="mt-1 font-mono text-[11px] text-neutral-400 break-all select-all">{f.path}</div>
+              <div className="mt-1 font-mono text-xs text-neutral-400 break-all select-all">{f.path}</div>
             </div>
             <button
               type="button"
@@ -119,7 +120,7 @@ export const AssetFilesPanel: React.FC<AssetFilesPanelProps> = ({ asset, onChang
               className="text-neutral-500 hover:text-rose-400 text-xs p-1 cursor-pointer disabled:opacity-40"
               title="Unlink (files on disk are not touched)"
             >
-              ✕
+              <X className="size-4" />
             </button>
           </li>
         ))}
@@ -141,7 +142,7 @@ export const AssetFilesPanel: React.FC<AssetFilesPanelProps> = ({ asset, onChang
               className="px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs border border-neutral-700 cursor-pointer shrink-0"
               title="Browse for a folder"
             >
-              📂
+              <FolderOpen className="size-4" />
             </button>
           </div>
           <div className="flex gap-2">

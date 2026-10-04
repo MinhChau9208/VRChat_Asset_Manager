@@ -25,6 +25,7 @@ import {
   updateAsset,
 } from "@/lib/api";
 import { ScannerSettings } from "@/components/ScannerSettings";
+import { Check, Package, ScanSearch, Settings2, ShoppingBag, TriangleAlert, UserRound, X } from "lucide-react";
 
 const selectClass =
   "rounded-lg border border-neutral-800 bg-neutral-950/80 px-2 py-1 text-xs text-white focus:border-cyan-500 focus:outline-none cursor-pointer";
@@ -200,9 +201,9 @@ export default function ReviewPage() {
             <button
               type="button"
               onClick={() => setShowSettings((v) => !v)}
-              className="px-3 py-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-xs border border-neutral-800 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-xs border border-neutral-800 cursor-pointer"
             >
-              ⚙️ Settings
+              <Settings2 className="size-4" /> Settings
             </button>
             <button
               type="button"
@@ -216,7 +217,7 @@ export default function ReviewPage() {
                   Scanning…
                 </>
               ) : (
-                "🔍 Scan now"
+                <><ScanSearch className="size-4" /> Scan now</>
               )}
             </button>
           </div>
@@ -260,7 +261,7 @@ export default function ReviewPage() {
             {scanResult.attached.length > 0 && (
               <details>
                 <summary className="cursor-pointer text-cyan-400">Show linked files</summary>
-                <ul className="mt-2 space-y-0.5 font-mono text-[11px] text-neutral-400">
+                <ul className="mt-2 space-y-0.5 font-mono text-xs text-neutral-400">
                   {scanResult.attached.map((a) => (
                     <li key={a.path}>
                       <Link href={`/assets/${a.asset_id}`} className="text-neutral-200 hover:text-cyan-300">
@@ -275,7 +276,7 @@ export default function ReviewPage() {
             {scanResult.warnings.length > 0 && (
               <ul className="text-amber-300 space-y-0.5">
                 {scanResult.warnings.map((w) => (
-                  <li key={w}>⚠ {w}</li>
+                  <li key={w} className="flex items-center gap-1.5"><TriangleAlert className="size-3.5 shrink-0" /> {w}</li>
                 ))}
               </ul>
             )}
@@ -294,13 +295,13 @@ export default function ReviewPage() {
                 )}
               </span>
               <button type="button" onClick={() => setBoothResults(null)} className="text-neutral-500 hover:text-neutral-200 cursor-pointer">
-                ✕
+                <X className="size-4" />
               </button>
             </div>
-            <ul className="space-y-0.5 text-[11px]">
+            <ul className="space-y-0.5 text-xs">
               {boothResults.map((r) => (
                 <li key={r.asset_id} className={r.ok ? "text-neutral-400" : "text-rose-300"}>
-                  {r.ok ? "✓" : "✕"} {r.name}
+                  {r.ok ? <Check className="inline size-3.5" /> : <X className="inline size-3.5" />} {r.name}
                   {r.ok && r.changed && r.changed.length > 0 && <span className="text-neutral-500"> · {r.changed.join(", ")}</span>}
                   {r.error && <span> · {r.error}</span>}
                 </li>
@@ -314,7 +315,7 @@ export default function ReviewPage() {
             href="/?local_status=missing"
             className="block p-3 rounded-lg bg-amber-950/30 border border-amber-800/50 text-xs text-amber-300 hover:border-amber-600"
           >
-            ⚠ {missingCount} asset{missingCount === 1 ? "" : "s"} in your library point to files that are missing
+            <TriangleAlert className="mr-1 inline size-4" /> {missingCount} asset{missingCount === 1 ? "" : "s"} in your library point to files that are missing
             from disk. View them →
           </Link>
         )}
@@ -339,7 +340,7 @@ export default function ReviewPage() {
                 disabled={busy}
                 className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
               >
-                ✓ Accept selected
+                <Check className="size-4" /> Accept selected
               </button>
               <button
                 type="button"
@@ -348,7 +349,7 @@ export default function ReviewPage() {
                 className="px-3 py-1.5 rounded-lg bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
                 title="Fill name, author, empty category, preview and compatible avatars from BOOTH"
               >
-                {busy ? "Working…" : "🛒 Fetch BOOTH info"}
+                <ShoppingBag className="size-4" /> {busy ? "Working…" : "Fetch BOOTH info"}
               </button>
               <button
                 type="button"
@@ -399,7 +400,7 @@ export default function ReviewPage() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={getAssetPreviewUrl(d.id, d.updated_at)} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-2xl opacity-40">📦</span>
+                      <Package className="size-7 text-muted-foreground/40" strokeWidth={1.5} />
                     )}
                   </div>
 
@@ -415,7 +416,7 @@ export default function ReviewPage() {
                       />
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-neutral-400">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-400">
                       <span title={(d.files ?? []).map((f) => f.path).join("\n")}>
                         {(d.files ?? []).length} file{(d.files ?? []).length === 1 ? "" : "s"}
                       </span>
@@ -427,7 +428,7 @@ export default function ReviewPage() {
                       <span className="font-mono text-neutral-500 truncate max-w-full">{d.local_path}</span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
                       {d.booth_url ? (
                         <a
                           href={d.booth_url}
@@ -436,7 +437,7 @@ export default function ReviewPage() {
                           className="px-1.5 py-0.5 rounded bg-red-950/50 text-red-300 border border-red-800/60 hover:border-red-600"
                           title={info?.booth_source ? `Found in ${info.booth_source}` : undefined}
                         >
-                          🛒 BOOTH {d.booth_url.split("/").pop()}
+                          <ShoppingBag className="inline size-3.5" /> BOOTH {d.booth_url.split("/").pop()}
                           {info?.booth_source && <span className="text-red-400/70"> · {info.booth_source}</span>}
                         </a>
                       ) : (
@@ -479,7 +480,7 @@ export default function ReviewPage() {
                           className="px-1.5 py-0.5 rounded bg-violet-950/50 text-violet-200 border border-violet-800/70"
                           title={(info?.compat_reasons ?? []).join("\n")}
                         >
-                          👤 {c.avatar_name}
+                          <UserRound className="inline size-3.5" /> {c.avatar_name}
                         </span>
                       ))}
                     </div>
@@ -492,7 +493,7 @@ export default function ReviewPage() {
                       disabled={busy}
                       className="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
                     >
-                      ✓ Accept
+                      <Check className="inline size-3.5" /> Accept
                     </button>
                     <Link
                       href={`/assets/${d.id}`}
@@ -528,7 +529,7 @@ export default function ReviewPage() {
             {showIgnored && (
               <ul className="mt-2 space-y-1">
                 {ignoredPaths.map((p) => (
-                  <li key={p} className="flex items-center gap-2 font-mono text-[11px] text-neutral-500">
+                  <li key={p} className="flex items-center gap-2 font-mono text-xs text-neutral-500">
                     <span className="flex-1 break-all">{p}</span>
                     <button
                       type="button"

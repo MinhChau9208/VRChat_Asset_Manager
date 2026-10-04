@@ -2,7 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
-import { Category, buildCategoryTree } from "@/lib/api";
+import { Heart, LayoutGrid, ScanSearch, Settings2 } from "lucide-react";
+import { Asset, Category, buildCategoryTree } from "@/lib/api";
+import { categoryIcon } from "@/lib/categoryIcon";
+import { assetPreviewSrc } from "./AssetCard";
+import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   categories: Category[];
@@ -19,43 +23,73 @@ interface SidebarProps {
   totalAssetsCount?: number;
   categoryCounts?: Record<string, number>;
   draftCount?: number;
+  /** Avatars in the library, linked to their avatar pages. */
+  avatars?: Asset[];
 }
 
-// Category icons for visual polish
-const getCategoryIcon = (name: string) => {
-  switch (name.toLowerCase()) {
-    case "avatar":
-      return "👤";
-    case "hair":
-      return "💇";
-    case "clothes":
-      return "👗";
-    case "shoes":
-      return "👟";
-    case "accessory":
-      return "💍";
-    case "gimmick":
-      return "✨";
-    case "outfit":
-      return "👗";
-    case "face":
-      return "🙂";
-    case "animation":
-      return "💃";
-    case "texture & material":
-      return "🎨";
-    case "tool & shader":
-      return "🛠️";
-    case "world":
-      return "🌍";
-    case "audio":
-      return "🎵";
-    case "other":
-      return "📦";
-    default:
-      return "📁";
-  }
-};
+function NavItem({
+  active,
+  onClick,
+  href,
+  icon: Icon,
+  label,
+  count,
+  indent = false,
+  tone = "default",
+}: {
+  active?: boolean;
+  onClick?: () => void;
+  href?: string;
+  icon?: React.ElementType;
+  label: string;
+  count?: number;
+  indent?: boolean;
+  tone?: "default" | "favorite" | "review";
+}) {
+  const className = cn(
+    "flex w-full items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-left text-sm transition-colors",
+    indent && "md:pl-9",
+    active
+      ? tone === "favorite"
+        ? "bg-rose-500/15 text-rose-300"
+        : "bg-primary/15 text-primary"
+      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+  );
+  const content = (
+    <>
+      {Icon && <Icon className={cn("size-4 shrink-0", tone === "favorite" && "text-rose-400")} />}
+      <span className="flex-1 truncate">{label}</span>
+      {count !== undefined && count > 0 && (
+        <span
+          className={cn(
+            "text-xs tabular-nums",
+            tone === "review" ? "rounded bg-amber-500/15 px-1.5 text-amber-300" : "text-muted-foreground/70"
+          )}
+        >
+          {count}
+        </span>
+      )}
+    </>
+  );
+  return href ? (
+    <Link href={href} className={className}>
+      {content}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} className={className}>
+      {content}
+    </button>
+  );
+}
+
+function SectionTitle({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <div className="mb-1.5 flex items-center justify-between px-2.5">
+      <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">{children}</h2>
+      {action}
+    </div>
+  );
+}
 
 export const Sidebar: React.FC<SidebarProps> = ({
   categories,
@@ -72,180 +106,134 @@ export const Sidebar: React.FC<SidebarProps> = ({
   totalAssetsCount,
   categoryCounts,
   draftCount,
+  avatars = [],
 }) => {
+  const selectCategory = (name: string) => {
+    if (isFavoriteOnly && onToggleFavoriteOnly) onToggleFavoriteOnly();
+    onSelectCategory(name);
+  };
+
   return (
-    <aside className="w-full md:w-56 shrink-0 md:min-h-[calc(100vh-4rem)] border-b md:border-b-0 md:border-r border-neutral-800 bg-neutral-950/40 p-4 flex flex-col gap-6">
-      {/* Navigation / Library Section */}
-      <div>
-        <div className="mb-2.5 px-2 flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-            Library
-          </h2>
-          {totalAssetsCount !== undefined && (
-            <span className="text-[11px] font-mono text-neutral-400 bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-800">
-              {totalAssetsCount}
-            </span>
-          )}
-        </div>
+    <aside className="flex w-full shrink-0 flex-col gap-5 [&>*]:shrink-0 border-b border-border p-3 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-60 md:overflow-y-auto md:border-b-0 md:border-r">
+      <nav className="flex gap-0.5 overflow-x-auto md:flex-col">
+        <NavItem
+          icon={LayoutGrid}
+          label="All Assets"
+          count={totalAssetsCount}
+          active={!isFavoriteOnly && selectedCategory === "all"}
+          onClick={() => selectCategory("all")}
+        />
+        {onToggleFavoriteOnly && (
+          <NavItem
+            icon={Heart}
+            label="Favorites"
+            count={favoriteCount}
+            tone="favorite"
+            active={isFavoriteOnly}
+            onClick={onToggleFavoriteOnly}
+          />
+        )}
+        <NavItem icon={ScanSearch} label="Scan & Review" count={draftCount} tone="review" href="/review" />
+      </nav>
 
-        <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 scrollbar-none">
-          {/* All Assets */}
-          <button
-            type="button"
-            onClick={() => {
-              if (isFavoriteOnly && onToggleFavoriteOnly) {
-                onToggleFavoriteOnly();
-              }
-              onSelectCategory("all");
-            }}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-all whitespace-nowrap cursor-pointer text-left ${
-              !isFavoriteOnly && selectedCategory === "all"
-                ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.1)]"
-                : "text-neutral-400 hover:bg-neutral-900/80 hover:text-neutral-200 border border-transparent"
-            }`}
-          >
-            <span className="text-sm">🗂️</span>
-            <span className="flex-1">All Assets</span>
-          </button>
-
-          {/* Favorites Filter */}
-          {onToggleFavoriteOnly && (
-            <button
-              type="button"
-              onClick={onToggleFavoriteOnly}
-              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-all whitespace-nowrap cursor-pointer text-left ${
-                isFavoriteOnly
-                  ? "bg-rose-500/15 text-rose-400 border border-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.1)] font-semibold"
-                  : "text-neutral-400 hover:bg-neutral-900/80 hover:text-rose-300 border border-transparent"
-              }`}
-            >
-              <span className="text-sm text-rose-500">♥</span>
-              <span className="flex-1">Favorites</span>
-              {favoriteCount !== undefined && favoriteCount > 0 && (
-                <span className="text-[10px] font-mono text-rose-400 bg-rose-950/60 px-1.5 py-0.2 rounded border border-rose-800/40">
-                  {favoriteCount}
-                </span>
-              )}
-            </button>
-          )}
-
-          {/* Scan & Review */}
-          <Link
-            href="/review"
-            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-all whitespace-nowrap text-neutral-400 hover:bg-neutral-900/80 hover:text-amber-200 border border-transparent"
-          >
-            <span className="text-sm">🔍</span>
-            <span className="flex-1">Scan & Review</span>
-            {draftCount !== undefined && draftCount > 0 && (
-              <span className="text-[10px] font-mono text-amber-300 bg-amber-950/60 px-1.5 rounded border border-amber-800/40">
-                {draftCount}
-              </span>
-            )}
-          </Link>
-        </nav>
-      </div>
-
-      {/* Categories Section */}
-      <div>
-        <div className="mb-2 px-2 flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-            Categories
-          </h2>
-          <Link
-            href="/categories"
-            className="text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors"
-          >
-            Manage
-          </Link>
-        </div>
-
-        <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 scrollbar-none">
-          {/* Dynamic Categories from API */}
-          {isLoading && categories.length === 0 ? (
-            <div className="space-y-1.5 pt-1">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div
-                  key={i}
-                  className="h-8 w-full rounded-lg bg-neutral-900/60 animate-pulse"
-                />
-              ))}
-            </div>
-          ) : (
-            buildCategoryTree(categories).flatMap((root) => {
-              const subtotal = root.children.reduce(
-                (sum, child) => sum + (categoryCounts?.[child.id] ?? 0),
-                categoryCounts?.[root.id] ?? 0
-              );
-              const renderButton = (cat: Category, count: number, isChild: boolean) => {
-                const isSelected = !isFavoriteOnly && selectedCategory.toLowerCase() === cat.name.toLowerCase();
-                return (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => {
-                      if (isFavoriteOnly && onToggleFavoriteOnly) {
-                        onToggleFavoriteOnly();
-                      }
-                      onSelectCategory(cat.name);
-                    }}
-                    className={`flex items-center gap-2.5 rounded-lg py-2 text-xs font-medium transition-all whitespace-nowrap cursor-pointer text-left ${
-                      isChild ? "px-3 md:pl-9" : "px-3"
-                    } ${
-                      isSelected
-                        ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.1)]"
-                        : "text-neutral-400 hover:bg-neutral-900/80 hover:text-neutral-200 border border-transparent"
-                    }`}
-                  >
-                    {!isChild && <span className="text-sm">{getCategoryIcon(cat.name)}</span>}
-                    <span className="flex-1">{cat.name}</span>
-                    {count > 0 && (
-                      <span className="text-[10px] font-mono text-neutral-500">{count}</span>
+      {avatars.length > 0 && (
+        <div>
+          <SectionTitle>Avatars</SectionTitle>
+          <div className="flex gap-1 overflow-x-auto md:flex-col">
+            {avatars.map((a) => {
+              const src = assetPreviewSrc(a);
+              return (
+                <Link
+                  key={a.id}
+                  href={`/avatars/${a.id}`}
+                  className="flex shrink-0 items-center gap-2.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                >
+                  <span className="size-7 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
+                    {src && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={src} alt="" className="size-full object-cover" />
                     )}
-                  </button>
+                  </span>
+                  <span className="truncate">{a.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <SectionTitle
+          action={
+            <Link href="/categories" className="text-muted-foreground/70 hover:text-primary" title="Manage categories">
+              <Settings2 className="size-3.5" />
+            </Link>
+          }
+        >
+          Categories
+        </SectionTitle>
+        <nav className="flex gap-0.5 overflow-x-auto md:flex-col">
+          {isLoading && categories.length === 0
+            ? Array.from({ length: 8 }, (_, i) => <div key={i} className="h-8 w-full animate-pulse rounded-md bg-muted/40" />)
+            : buildCategoryTree(categories).flatMap((root) => {
+                const subtotal = root.children.reduce(
+                  (sum, child) => sum + (categoryCounts?.[child.id] ?? 0),
+                  categoryCounts?.[root.id] ?? 0
                 );
-              };
-              return [
-                renderButton(root, subtotal, false),
-                ...root.children.map((child) =>
-                  renderButton(child, categoryCounts?.[child.id] ?? 0, true)
-                ),
-              ];
-            })
-          )}
+                const isActive = (c: Category) =>
+                  !isFavoriteOnly && selectedCategory.toLowerCase() === c.name.toLowerCase();
+                return [
+                  <NavItem
+                    key={root.id}
+                    icon={categoryIcon(root.name)}
+                    label={root.name}
+                    count={subtotal}
+                    active={isActive(root)}
+                    onClick={() => selectCategory(root.name)}
+                  />,
+                  ...root.children.map((child) => (
+                    <NavItem
+                      key={child.id}
+                      label={child.name}
+                      count={categoryCounts?.[child.id]}
+                      indent
+                      active={isActive(child)}
+                      onClick={() => selectCategory(child.name)}
+                    />
+                  )),
+                ];
+              })}
         </nav>
       </div>
 
-      {/* Tags Filter Section */}
       {availableTags.length > 0 && onToggleTag && (
         <div>
-          <div className="mb-2.5 px-2 flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-              Filter by Tag
-            </h2>
-            {selectedTags.length > 0 && onClearTags && (
-              <button
-                type="button"
-                onClick={onClearTags}
-                className="text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors"
-              >
-                Clear ({selectedTags.length})
-              </button>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-1.5 px-1 max-h-48 overflow-y-auto scrollbar-thin">
+          <SectionTitle
+            action={
+              selectedTags.length > 0 &&
+              onClearTags && (
+                <button type="button" onClick={onClearTags} className="text-xs text-primary hover:underline">
+                  Clear ({selectedTags.length})
+                </button>
+              )
+            }
+          >
+            Tags
+          </SectionTitle>
+          <div className="flex max-h-48 flex-wrap gap-1 overflow-y-auto px-1.5">
             {availableTags.map((tag) => {
-              const isSelected = selectedTags.includes(tag);
+              const on = selectedTags.includes(tag);
               return (
                 <button
                   key={tag}
                   type="button"
                   onClick={() => onToggleTag(tag)}
-                  className={`inline-flex items-center px-2 py-1 rounded-md text-[11px] font-mono transition-all border ${
-                    isSelected
-                      ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm"
-                      : "bg-neutral-900/80 text-neutral-400 border-neutral-800 hover:border-neutral-700 hover:text-neutral-200"
-                  }`}
+                  className={cn(
+                    "rounded-md border px-2 py-0.5 text-xs transition-colors",
+                    on
+                      ? "border-primary/50 bg-primary/15 text-primary"
+                      : "border-border text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+                  )}
                 >
                   #{tag}
                 </button>

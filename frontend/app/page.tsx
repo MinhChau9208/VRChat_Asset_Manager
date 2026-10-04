@@ -11,6 +11,13 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { AssetGrid } from "@/components/AssetGrid";
+import { AssetDetail } from "@/components/AssetDetail";
+import { BulkActionBar } from "@/components/BulkActionBar";
+import { CardSize, ViewMode } from "@/components/AssetCard";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useLocalStorage } from "@/lib/useLocalStorage";
+import { toast } from "sonner";
+import { Heart, UserRound, X } from "lucide-react";
 import {
   FilterToolbar,
   SortOption,
@@ -28,6 +35,8 @@ import {
   toggleAssetFavorite,
   checkBackendHealth,
   AssetFilterParams,
+  BulkUpdateInput,
+  bulkUpdateAssets,
 } from "@/lib/api";
 
 function LibraryView() {
@@ -40,6 +49,23 @@ function LibraryView() {
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [stats, setStats] = useState<LibraryStats | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [avatars, setAvatars] = useState<Asset[]>([]);
+
+  // Display preferences, remembered per browser.
+  const [view, setView] = useLocalStorage<ViewMode>("library.view", "grid", ["grid", "list"]);
+  const [cardSize, setCardSize] = useLocalStorage<CardSize>("library.cardSize", "md", ["sm", "md", "lg"]);
+
+  // Asset opened in the side drawer (kept in the URL as ?asset=ID).
+  const [openAssetId, setOpenAssetId] = useState<number | null>(() => {
+    const id = Number(searchParams.get("asset"));
+    return id > 0 ? id : null;
+  });
+  const drawerChanged = useRef(false);
+
+  // Select mode for bulk edits.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // Filter States initialized from URL
   const [selectedCategory, setSelectedCategory] = useState<string>(
@@ -141,6 +167,9 @@ function LibraryView() {
       params.set("compatible_with", String(compatibleWith.id));
       params.set("for", compatibleWith.name);
     }
+    if (openAssetId !== null) {
+      params.set("asset", String(openAssetId));
+    }
 
     const qs = params.toString();
     const target = qs ? `${pathname}?${qs}` : pathname;
@@ -155,6 +184,7 @@ function LibraryView() {
     localStatus,
     sort,
     compatibleWith,
+    openAssetId,
     pathname,
     router,
   ]);
@@ -162,10 +192,11 @@ function LibraryView() {
   // 3. Load categories and tags (again on retry)
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getCategories(), getTags(), getLibraryStats()])
-      .then(([cats, tags, libraryStats]) => {
+    Promise.all([getCategories(), getTags(), getLibraryStats(), getAssets({ category: "Avatar", sort: "name_asc" })])
+      .then(([cats, tags, libraryStats, avatarList]) => {
         if (cancelled) return;
         setCategories(cats);
+        setAvatars(avatarList);
         setAvailableTags(tags.map((t: Tag) => t.name));
         setStats(libraryStats);
         setIsConnected(true);
@@ -289,6 +320,53 @@ function LibraryView() {
     }
   };
 
+  // Drawer: open in place; reload counts on close if anything changed.
+  const handleOpen = (asset: Asset) => {
+    drawerChanged.current = false;
+    setOpenAssetId(asset.id);
+  };
+  const closeDrawer = () => {
+    setOpenAssetId(null);
+    if (drawerChanged.current) {
+      drawerChanged.current = false;
+      setReloadToken((t) => t + 1);
+    }
+  };
+  const handleDrawerChanged = (updated: Asset) => {
+    drawerChanged.current = true;
+    setAssets((prev) => prev.map((a) => (a.id === updated.id ? { ...a, ...updated } : a)));
+  };
+  const handleDrawerDeleted = (id: number) => {
+    setAssets((prev) => prev.filter((a) => a.id !== id));
+    drawerChanged.current = true;
+    closeDrawer();
+  };
+
+  // Select mode
+  const toggleSelected = (asset: Asset) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(asset.id)) next.delete(asset.id);
+      else next.add(asset.id);
+      return next;
+    });
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+  const handleBulkApply = async (change: Omit<BulkUpdateInput, "asset_ids">, label: string) => {
+    setBulkBusy(true);
+    try {
+      const { updated } = await bulkUpdateAssets({ asset_ids: [...selectedIds], ...change });
+      toast.success(`${label} (${updated} asset${updated === 1 ? "" : "s"})`);
+      setReloadToken((t) => t + 1);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Bulk update failed");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const handleRetry = () => {
     setIsCategoriesLoading(true);
     setReloadToken((t) => t + 1);
@@ -307,7 +385,7 @@ function LibraryView() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-950 text-neutral-100 selection:bg-cyan-500/20 selection:text-cyan-200">
+    <div className="flex min-h-screen flex-col">
       {/* Top Navigation Bar */}
       <Header
         searchQuery={searchQuery}
@@ -333,53 +411,30 @@ function LibraryView() {
           totalAssetsCount={stats?.total}
           categoryCounts={stats?.by_category}
           draftCount={stats?.drafts}
+          avatars={avatars}
         />
 
         {/* Center/Right Asset Browsing View */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl">
-          {/* Header & Title */}
-          <div className="mb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h2 className="text-xl font-bold tracking-tight text-white capitalize flex items-center gap-2">
-                {isFavoriteOnly && <span className="text-rose-500">♥</span>}
-                {isFavoriteOnly
-                  ? "Favorite Assets"
-                  : selectedCategory === "all"
-                  ? "All Assets"
-                  : selectedCategory}
-              </h2>
+        <main className={`min-w-0 flex-1 p-4 sm:p-6 lg:p-8 ${selectMode ? "pb-28" : ""}`}>
+          {/* Title */}
+          <div className="mb-3">
+            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+              {isFavoriteOnly && <Heart className="size-5 fill-rose-500 text-rose-500" />}
+              {isFavoriteOnly ? "Favorites" : selectedCategory === "all" ? "All Assets" : selectedCategory}
+            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span>
+                {isLoading ? "Loading…" : `${assets.length} ${assets.length === 1 ? "asset" : "assets"}`}
+                {debouncedSearch && !isLoading && <> matching “{debouncedSearch}”</>}
+              </span>
               {compatibleWith && (
-                <div className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-violet-950/50 text-violet-200 border border-violet-800/70">
-                  <span>👤 Compatible with {compatibleWith.name}</span>
-                  <button
-                    type="button"
-                    onClick={() => setCompatibleWith(null)}
-                    className="text-violet-300 hover:text-white font-bold cursor-pointer"
-                    title="Show all assets"
-                  >
-                    ×
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-violet-800/70 bg-violet-950/40 px-2 py-0.5 text-xs text-violet-200">
+                  <UserRound className="size-3.5" /> Compatible with {compatibleWith.name}
+                  <button type="button" onClick={() => setCompatibleWith(null)} aria-label="Show all assets" className="hover:text-white">
+                    <X className="size-3.5" />
                   </button>
-                </div>
+                </span>
               )}
-              <p className="text-xs text-neutral-400 mt-0.5">
-                {isLoading ? (
-                  "Loading asset library..."
-                ) : (
-                  <>
-                    Showing <span className="font-semibold text-white">{assets.length}</span>{" "}
-                    {assets.length === 1 ? "asset" : "assets"}
-                    {debouncedSearch && (
-                      <>
-                        {" "}matching &ldquo;
-                        <span className="text-cyan-400 font-mono">
-                          {debouncedSearch}
-                        </span>
-                        &rdquo;
-                      </>
-                    )}
-                  </>
-                )}
-              </p>
             </div>
           </div>
 
@@ -405,6 +460,12 @@ function LibraryView() {
             totalCount={assets.length}
             hasActiveFilters={hasActiveFilters}
             onClearAllFilters={handleClearAllFilters}
+            view={view}
+            onViewChange={setView}
+            size={cardSize}
+            onSizeChange={setCardSize}
+            selectMode={selectMode}
+            onToggleSelectMode={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
           />
 
           {/* Asset Grid */}
@@ -419,9 +480,46 @@ function LibraryView() {
             hasActiveFilters={hasActiveFilters}
             onClearFilters={handleClearAllFilters}
             onToggleFavorite={handleToggleFavorite}
+            onOpen={handleOpen}
+            view={view}
+            size={cardSize}
+            selectable={selectMode}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelected}
           />
         </main>
       </div>
+
+      {selectMode && (
+        <BulkActionBar
+          count={selectedIds.size}
+          totalVisible={assets.length}
+          categories={categories}
+          avatars={avatars}
+          busy={bulkBusy}
+          onApply={handleBulkApply}
+          onSelectAll={() => setSelectedIds(new Set(assets.map((a) => a.id)))}
+          onClear={() => setSelectedIds(new Set())}
+          onExit={exitSelectMode}
+        />
+      )}
+
+      <Sheet open={openAssetId !== null} onOpenChange={(open) => !open && closeDrawer()}>
+        <SheetContent side="right" className="overflow-y-auto p-5 data-[side=right]:w-full data-[side=right]:sm:max-w-2xl sm:p-6">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Asset details</SheetTitle>
+          </SheetHeader>
+          {openAssetId !== null && (
+            <AssetDetail
+              key={openAssetId}
+              assetId={openAssetId}
+              variant="drawer"
+              onChanged={handleDrawerChanged}
+              onDeleted={handleDrawerDeleted}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -430,8 +528,8 @@ export default function Home() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-neutral-400 font-mono text-xs">
-          Loading library...
+        <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+          Loading library…
         </div>
       }
     >

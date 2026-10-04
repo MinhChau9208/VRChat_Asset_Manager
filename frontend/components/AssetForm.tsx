@@ -17,9 +17,13 @@ import {
   BoothSuggestion,
   lookupBooth,
   setPreviewFromBooth,
+  uploadAssetPreview,
 } from "@/lib/api";
+import { PreviewDropzone } from "./PreviewDropzone";
+import { assetPreviewSrc } from "./AssetCard";
 import { CompatibleAvatarsInput } from "./CompatibleAvatarsInput";
 import { BoothImportPanel, BoothSelection } from "./BoothImportPanel";
+import { TriangleAlert, X } from "lucide-react";
 
 interface AssetFormProps {
   initialData?: Asset;
@@ -56,6 +60,18 @@ export const AssetForm: React.FC<AssetFormProps> = ({
   const [isFetchingBooth, setIsFetchingBooth] = useState(false);
   const [boothError, setBoothError] = useState<string | null>(null);
   const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
+  // A picked / dropped / pasted image, uploaded after the asset is saved.
+  const [pendingPreviewFile, setPendingPreviewFile] = useState<{ file: File; src: string } | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const choosePreviewFile = (file: File) => {
+    setPendingPreviewFile((prev) => {
+      if (prev) URL.revokeObjectURL(prev.src);
+      return { file, src: URL.createObjectURL(file) };
+    });
+    setPendingPreviewUrl(null);
+    setPreviewError(null);
+  };
 
   // Data loading states
   const [categories, setCategories] = useState<Category[]>([]);
@@ -127,7 +143,10 @@ export const AssetForm: React.FC<AssetFormProps> = ({
         (c) => !prev.some((p) => p.avatar_name.toLowerCase() === c.avatar_name.toLowerCase())
       ),
     ]);
-    setPendingPreviewUrl(sel.imageUrl ?? null);
+    if (sel.imageUrl) {
+      setPendingPreviewUrl(sel.imageUrl);
+      setPendingPreviewFile(null);
+    }
     setBoothSuggestion(null);
   };
 
@@ -241,13 +260,15 @@ export const AssetForm: React.FC<AssetFormProps> = ({
         result = await updateAsset(initialData.id, payload);
       }
 
-      if (pendingPreviewUrl) {
-        try {
+      // The asset is saved at this point; a failed preview does not undo that.
+      try {
+        if (pendingPreviewFile) {
+          result = await uploadAssetPreview(result.id, pendingPreviewFile.file);
+        } else if (pendingPreviewUrl) {
           result = await setPreviewFromBooth(result.id, pendingPreviewUrl);
-        } catch (previewErr) {
-          // The asset is saved; only the preview download failed.
-          console.warn("Failed to download BOOTH preview:", previewErr);
         }
+      } catch (previewErr) {
+        console.warn("Failed to save preview:", previewErr);
       }
 
       onSubmitSuccess(result);
@@ -274,7 +295,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
       {formError && (
         <div className="p-3.5 rounded-xl text-xs bg-rose-950/50 border border-rose-800/70 text-rose-300 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span>⚠️</span>
+            <TriangleAlert className="size-4 shrink-0" />
             <span>{formError}</span>
           </div>
           <button
@@ -282,10 +303,34 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             onClick={() => setFormError(null)}
             className="text-neutral-400 hover:text-white cursor-pointer px-1"
           >
-            ✕
+            <X className="size-4" />
           </button>
         </div>
       )}
+
+      {/* Preview */}
+      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card/40 p-5 sm:flex-row sm:items-start">
+        <div className="w-full max-w-[200px] shrink-0">
+          <PreviewDropzone
+            src={pendingPreviewFile?.src ?? pendingPreviewUrl ?? (initialData ? assetPreviewSrc(initialData) : null)}
+            onFile={choosePreviewFile}
+            onError={setPreviewError}
+            pasteAnywhere
+          />
+        </div>
+        <div className="space-y-1.5 text-sm text-muted-foreground">
+          <h3 className="text-sm font-medium text-foreground">Preview image</h3>
+          <p>Click the square, drop an image on it, or paste one with Ctrl+V (a screenshot of the BOOTH page works).</p>
+          <p>
+            You can also pick one of the BOOTH images with <span className="text-foreground">Fetch from BOOTH</span> below.
+            The image is saved when you save the asset.
+          </p>
+          {(pendingPreviewFile || pendingPreviewUrl) && (
+            <p className="text-emerald-400">New preview selected — it will be saved with the asset.</p>
+          )}
+          {previewError && <p className="text-destructive">{previewError}</p>}
+        </div>
+      </div>
 
       {/* Basic Info Section */}
       <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-5 space-y-4 backdrop-blur-sm">
@@ -363,7 +408,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               )}
             </select>
             {isLoadingMetadata && (
-              <p className="mt-1 text-[10px] text-neutral-500">
+              <p className="mt-1 text-xs text-neutral-500">
                 Loading categories...
               </p>
             )}
@@ -428,11 +473,6 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             <p className="mt-1 text-xs text-rose-400">{fieldErrors.boothUrl}</p>
           )}
           {boothError && <p className="mt-1 text-xs text-rose-400">{boothError}</p>}
-          {pendingPreviewUrl && !boothSuggestion && (
-            <p className="mt-1 text-[11px] text-emerald-400">
-              BOOTH image selected — it will become the preview when you save.
-            </p>
-          )}
           {boothSuggestion && (
             <BoothImportPanel
               suggestion={boothSuggestion}
@@ -465,7 +505,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
       <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-5 space-y-3 backdrop-blur-sm">
         <h3 className="text-xs uppercase font-mono tracking-wider text-cyan-400 font-semibold flex items-center justify-between">
           <span>Local Filesystem Path</span>
-          <span className="text-[10px] text-neutral-400 lowercase font-normal">
+          <span className="text-xs text-neutral-400 lowercase font-normal">
             safe reference &bull; files are never deleted
           </span>
         </h3>
@@ -518,7 +558,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               )}
             </button>
           </div>
-          <p className="mt-1 text-[11px] text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-500">
             Paste any local Windows folder path or UNC network share. Deleting an
             asset record will never delete or modify the contents of this path.
           </p>
@@ -545,7 +585,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                   key={`${tag}-${idx}`}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-neutral-800 text-neutral-200 border border-neutral-700/80 group transition-all"
                 >
-                  <span className="text-cyan-400/80 text-[10px]">#</span>
+                  <span className="text-cyan-400/80 text-xs">#</span>
                   <span>{tag}</span>
                   <button
                     type="button"
@@ -553,7 +593,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                     className="text-neutral-400 hover:text-rose-400 transition-colors cursor-pointer p-0.5"
                     title={`Remove tag "${tag}"`}
                   >
-                    ✕
+                    <X className="size-3.5" />
                   </button>
                 </span>
               ))}
@@ -598,7 +638,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
         {/* Quick-Add Suggestions from Existing Tags */}
         {suggestedTags.length > 0 && (
           <div>
-            <span className="block text-[11px] text-neutral-400 mb-1.5">
+            <span className="block text-xs text-neutral-400 mb-1.5">
               Suggestions from your library (click to add):
             </span>
             <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
@@ -607,7 +647,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                   key={t.id}
                   type="button"
                   onClick={() => handleAddTag(t.name)}
-                  className="px-2 py-0.5 rounded text-[11px] bg-neutral-950 hover:bg-neutral-800 text-neutral-400 hover:text-cyan-300 border border-neutral-800 hover:border-neutral-700 transition-colors cursor-pointer"
+                  className="px-2 py-0.5 rounded text-xs bg-neutral-950 hover:bg-neutral-800 text-neutral-400 hover:text-cyan-300 border border-neutral-800 hover:border-neutral-700 transition-colors cursor-pointer"
                 >
                   +{t.name}
                 </button>

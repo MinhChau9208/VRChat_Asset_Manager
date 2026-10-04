@@ -18,6 +18,7 @@ interface SidebarProps {
   isLoading: boolean;
   totalAssetsCount?: number;
   categoryCounts?: Record<string, number>;
+  draftCount?: number;
 }
 
 // Category icons for visual polish
@@ -70,6 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isLoading,
   totalAssetsCount,
   categoryCounts,
+  draftCount,
 }) => {
   return (
     <aside className="w-full md:w-56 shrink-0 md:min-h-[calc(100vh-4rem)] border-b md:border-b-0 md:border-r border-neutral-800 bg-neutral-950/40 p-4 flex flex-col gap-6">
@@ -126,6 +128,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </button>
           )}
+
+          {/* Scan & Review */}
+          <Link
+            href="/review"
+            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-all whitespace-nowrap text-neutral-400 hover:bg-neutral-900/80 hover:text-amber-200 border border-transparent"
+          >
+            <span className="text-sm">🔍</span>
+            <span className="flex-1">Scan & Review</span>
+            {draftCount !== undefined && draftCount > 0 && (
+              <span className="text-[10px] font-mono text-amber-300 bg-amber-950/60 px-1.5 rounded border border-amber-800/40">
+                {draftCount}
+              </span>
+            )}
+          </Link>
         </nav>
       </div>
 

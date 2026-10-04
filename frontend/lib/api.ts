@@ -54,6 +54,8 @@ export interface Asset {
   files?: AssetFile[];
   /** Only present on single-asset responses. */
   compatible_avatars?: CompatAvatar[];
+  /** Scanner hints for drafts. */
+  scan_info?: ScanInfo;
   created_at: string;
   updated_at: string;
 }
@@ -512,6 +514,7 @@ export async function getBatchAssetStatus(
 export interface LibraryStats {
   total: number;
   favorites: number;
+  drafts: number;
   by_category: Record<string, number>;
 }
 
@@ -608,4 +611,90 @@ export function buildCategoryTree(categories: Category[]): CategoryNode[] {
     }
   }
   return roots;
+}
+
+// ---- Scanner (Milestone 8) ----
+
+export interface ScannerConfig {
+  roots: string[];
+  ignore: string[];
+  archive_dirs: string[];
+  /** Category folder name (lower-case) -> category name. */
+  folder_map: Record<string, string>;
+  known_dependencies: string[];
+}
+
+export interface ScanResult {
+  groups: number;
+  created: number;
+  attached: { asset_id: number; asset_name: string; path: string }[];
+  already_linked: number;
+  ignored: number;
+  warnings: string[];
+  duration_ms: number;
+}
+
+export interface ScanInfo {
+  scanned_at: string;
+  booth_source?: string;
+  booth_candidates?: { url: string; source: string }[];
+  compat_reasons?: string[];
+  preview_source?: string;
+  category_source?: string;
+}
+
+export async function getScannerConfig(): Promise<ScannerConfig> {
+  const res = await fetch(`${getApiBaseUrl()}/api/scanner/config`, { cache: "no-store" });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${res.status}: Failed to load scanner settings`);
+  }
+  return res.json();
+}
+
+export function saveScannerConfig(config: ScannerConfig): Promise<ScannerConfig> {
+  return sendJSON("PUT", "/api/scanner/config", config, "Failed to save scanner settings");
+}
+
+export function runScan(): Promise<ScanResult> {
+  return sendJSON("POST", "/api/scanner/scan", undefined, "Scan failed");
+}
+
+export function acceptDrafts(assetIds: number[]): Promise<{ accepted: number }> {
+  return sendJSON("POST", "/api/scanner/accept", { asset_ids: assetIds }, "Failed to accept drafts");
+}
+
+/** Deletes the drafts and makes later scans skip their paths. Files on disk are untouched. */
+export function ignoreDrafts(assetIds: number[]): Promise<{ ignored: number }> {
+  return sendJSON("POST", "/api/scanner/ignore", { asset_ids: assetIds }, "Failed to ignore drafts");
+}
+
+export async function getIgnoredPaths(): Promise<string[]> {
+  const res = await fetch(`${getApiBaseUrl()}/api/scanner/ignored`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: Failed to load ignored paths`);
+  }
+  return res.json();
+}
+
+export function unignorePath(path: string): Promise<{ message: string }> {
+  return sendJSON(
+    "DELETE",
+    `/api/scanner/ignored?path=${encodeURIComponent(path)}`,
+    undefined,
+    "Failed to restore path"
+  );
+}
+
+/** Full update payload built from an existing asset, with some fields changed. */
+export function assetUpdatePayload(asset: Asset, changes: Partial<UpdateAssetInput> = {}): UpdateAssetInput {
+  return {
+    name: asset.name,
+    category_id: asset.category_id,
+    author: asset.author,
+    booth_url: asset.booth_url,
+    local_path: asset.local_path,
+    description: asset.description,
+    ...changes,
+  };
 }

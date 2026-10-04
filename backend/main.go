@@ -13,6 +13,7 @@ import (
 	"vrchat-asset-manager/backend/internal/asset"
 	"vrchat-asset-manager/backend/internal/category"
 	"vrchat-asset-manager/backend/internal/database"
+	"vrchat-asset-manager/backend/internal/scanner"
 	"vrchat-asset-manager/backend/migrations"
 )
 
@@ -176,6 +177,9 @@ func main() {
 	assetHandler := asset.NewHandler(assetRepo)
 	assetHandler.SetPreviewsDir(previewsDir)
 	assetHandler.RegisterRoutes(mux)
+
+	// Filesystem scanner routes
+	scanner.NewHandler(scanner.NewService(db.DB, assetRepo, previewsDir)).RegisterRoutes(mux)
 
 	handler := corsMiddleware(mux)
 

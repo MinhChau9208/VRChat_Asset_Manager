@@ -332,6 +332,7 @@ function LibraryView() {
           isLoading={isCategoriesLoading}
           totalAssetsCount={stats?.total}
           categoryCounts={stats?.by_category}
+          draftCount={stats?.drafts}
         />
 
         {/* Center/Right Asset Browsing View */}

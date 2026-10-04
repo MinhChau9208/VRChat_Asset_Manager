@@ -1,6 +1,9 @@
 package asset
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // CategoryInfo represents simplified category details embedded in an asset.
 type CategoryInfo struct {
@@ -22,19 +25,21 @@ type CreateTagRequest struct {
 
 // Asset represents a full VRChat asset entity.
 type Asset struct {
-	ID              int64         `json:"id"`
-	Name            string        `json:"name"`
-	CategoryID      *int64        `json:"category_id"`
-	Category        *CategoryInfo `json:"category,omitempty"`
-	Author          string        `json:"author"`
-	BoothURL        string        `json:"booth_url"`
-	LocalPath       string        `json:"local_path"`
-	PreviewPath     string        `json:"preview_path"`
-	Description     string        `json:"description"`
-	Tags            []string      `json:"tags"`
-	IsFavorite      bool          `json:"is_favorite"`
-	Status          string        `json:"status"`
-	LocalFileExists *bool         `json:"local_file_exists,omitempty"`
+	ID          int64         `json:"id"`
+	Name        string        `json:"name"`
+	CategoryID  *int64        `json:"category_id"`
+	Category    *CategoryInfo `json:"category,omitempty"`
+	Author      string        `json:"author"`
+	BoothURL    string        `json:"booth_url"`
+	LocalPath   string        `json:"local_path"`
+	PreviewPath string        `json:"preview_path"`
+	Description string        `json:"description"`
+	Tags        []string      `json:"tags"`
+	IsFavorite  bool          `json:"is_favorite"`
+	Status      string        `json:"status"`
+	// ScanInfo explains scanner suggestions for drafts (sources, candidates).
+	ScanInfo        json.RawMessage `json:"scan_info,omitempty"`
+	LocalFileExists *bool           `json:"local_file_exists,omitempty"`
 	// Files and CompatibleAvatars are only loaded for single-asset responses.
 	Files             []AssetFile    `json:"files,omitempty"`
 	CompatibleAvatars []CompatAvatar `json:"compatible_avatars,omitempty"`
@@ -111,6 +116,7 @@ type BatchStatusResponse struct {
 type LibraryStats struct {
 	Total      int            `json:"total"`
 	Favorites  int            `json:"favorites"`
+	Drafts     int            `json:"drafts"`
 	ByCategory map[string]int `json:"by_category"` // category id -> asset count
 }
 

@@ -1,64 +1,133 @@
+<div align="center">
+
 # VRChat Asset Manager
 
-A local-first personal asset catalog and management tool for VRChat creators and users. Organizes avatars, clothing, accessories, hair, shaders, gimmicks, and materials while preserving links to BOOTH and local files.
+**A local-first library for the VRChat assets you bought on BOOTH.**
+See what you own, what it looks like, where it lives on disk, and which avatar it fits.
 
-## Technology Stack
+![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-local-003B57?logo=sqlite&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)
 
-- **Frontend**: Next.js 16 (App Router), TypeScript, Tailwind CSS v4, shadcn/ui (Radix) + lucide icons
-- **Backend**: Go 1.25+ (Standard Library HTTP server, REST API)
-- **Database**: SQLite (via pure-Go driver `modernc.org/sqlite`)
-- **Storage**: Local filesystem for asset files and preview images
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/library-light.png">
+  <img alt="Asset library with square preview cards, category sidebar and avatar shortcuts" src="docs/screenshots/library-dark.png" width="900">
+</picture>
 
-## Repository Structure
+</div>
 
-```text
-vrchat-asset-manager/
-├── frontend/          # Next.js frontend application (TypeScript, Tailwind CSS)
-│   ├── app/           # App router pages, layouts, and styles
-│   ├── .env.example   # Example frontend environment file
-│   └── .env.local     # Local environment configuration (gitignored)
-├── backend/           # Go REST API server
-│   ├── cmd/           # CLI utilities (e.g. cmd/verify verification tool)
-│   ├── internal/      # Internal packages (asset CRUD, database connection)
-│   ├── migrations/    # Explicit SQL migrations (*.up.sql)
-│   ├── go.mod
-│   └── main.go
-├── data/              # Local runtime data (app.db, previews/ - gitignored)
-├── docs/              # Project documentation and architecture records
-├── PROJECT_SPEC.md    # Source of truth project specification and milestone roadmap
-├── README.md          # Setup and developer documentation
-└── .gitignore         # Repository ignore rules
+---
+
+After a while, a VRChat folder turns into hundreds of zips and half-remembered folder names:
+`hamanosis_Small_Lady_Kipfel`, `BukiyouTwinTail_1.1.0.zip`, `LEGACY/Gothic_Doll.zip`…
+Which outfit was for which avatar? Where is the BOOTH page? Did I already extract that one?
+
+VRChat Asset Manager answers those questions without moving a single file. It scans the folders you
+already have, groups extracted folders with their original zips and older versions, pulls names and
+preview images from BOOTH when you ask, and shows everything as a visual library on `localhost`.
+
+## Features
+
+### 📚 A visual library
+Square preview cards (BOOTH images are 1:1) in three sizes or a compact list, a two-level category
+tree, tags, favorites, search by name / author / tag, and filters such as *missing from disk* or
+*has BOOTH link*. Click a card to open it in a side drawer without losing your place.
+
+<p align="center"><img alt="Asset details in the side drawer" src="docs/screenshots/drawer.png" width="800"></p>
+
+### 🔍 Scan your existing folders
+Point the scanner at your asset folder and it proposes one draft per asset:
+
+- **Level 1 folders are categories** (`Clothes`, `Hair`, `Models`…), level 2 entries are assets.
+- **Zips are matched to their extracted folder** even when the names differ in case, width,
+  separators or version (`Gothic Doll` ↔ `LEGACY/Gothic_Doll.zip`), and even across categories.
+- **Versions are grouped**: `Kipfel_1.1.1`, `Kipfel_1.2.0` and `Zips/Kipfel v1.1.1.zip` become one asset.
+- **BOOTH links are found** in folder names (`4460917 avatargimmick…`) and in readme / `.url` files,
+  skipping dependencies such as lilToon.
+- **Cover images** (`main.png`) become the preview.
+
+Nothing is added until you accept it on the review screen. Re-scanning only reports what is new.
+
+<p align="center"><img alt="Scan & Review screen with drafts" src="docs/screenshots/review.png" width="800"></p>
+
+### 🛒 BOOTH import, on demand
+Paste a BOOTH link and press **Fetch from BOOTH**: pick a preview image and copy the item name, shop,
+category, tags and the avatars it supports. Works in bulk for scanner drafts too.
+
+<p align="center"><img alt="Fetch from BOOTH panel" src="docs/screenshots/booth-import.png" width="800"></p>
+
+### 👤 Avatar-first
+Mark which avatars an outfit, hair or accessory fits — by hand, in bulk, or from the item's
+"対応アバター" list on BOOTH. Each avatar gets a page with everything compatible, grouped by category.
+
+<p align="center"><img alt="Avatar page with compatible assets" src="docs/screenshots/avatar-page.png" width="800"></p>
+
+### ✨ Comfortable to use
+- Drop or paste (Ctrl+V) an image to set a preview
+- Multi-select to set a category, add a tag or mark compatibility for many assets at once
+- One asset can track several folders, archives and versions, each with an *on disk / missing* status
+- **Open folder** jumps straight to the files in Explorer
+- Dark, light or system theme
+
+## Your files stay yours
+
+| | |
+|---|---|
+| **Local-first** | Everything is stored in a SQLite file in `data/`. No account, no cloud. |
+| **Read-only on your library** | The app never moves, renames or deletes your asset files. Deleting or ignoring an entry only removes the library record and its preview copy. |
+| **Private folders are skipped** | Folders in the *Never scan* list (by default `AvatarPass`) are never opened. |
+| **BOOTH only when you ask** | booth.pm is contacted only when you press a fetch button, at most once per second; items are cached for a week. Preview images are downloaded, never hotlinked. |
+| **Backups before upgrades** | Before applying a database migration, the backend copies `app.db` to `data/backups/`. |
+
+## How it works
+
+```mermaid
+flowchart LR
+    Browser["Browser<br/>localhost:3000"] -->|REST / JSON| API["Go API<br/>localhost:8080"]
+    subgraph Frontend
+      Browser
+    end
+    API --> DB[("SQLite<br/>data/app.db")]
+    API --> Previews["Preview images<br/>data/previews/"]
+    API -. "read only" .-> Library["Your asset folders<br/>e.g. D:\VRChat Assets"]
+    API -. "on request" .-> BOOTH["booth.pm"]
 ```
 
-## Getting Started
+The scanner turns folders into drafts you confirm:
 
-### Prerequisites
+```mermaid
+flowchart LR
+    A["Folders & zips<br/>on disk"] --> B["Group by name<br/>(width, case, version ignored)"]
+    B --> C["Hints:<br/>category · BOOTH id ·<br/>compatible avatars · cover image"]
+    C --> D["Drafts"]
+    D -->|Accept| E["Library"]
+    D -->|Ignore| F["Skipped on<br/>next scans"]
+    D -->|Fetch BOOTH info| D
+```
 
-- [Node.js](https://nodejs.org/) (v18+ recommended)
-- [Go](https://go.dev/) (v1.22+ recommended)
+**Stack** — Next.js 16 (App Router), TypeScript, Tailwind CSS 4, shadcn/ui (Radix) and lucide icons on the
+frontend; a Go standard-library HTTP server with the pure-Go `modernc.org/sqlite` driver and plain SQL
+migrations on the backend.
 
-### 1. Running the Backend
+## Getting started
 
-Open a terminal and run:
+### Requirements
+
+- [Go](https://go.dev/dl/) 1.25 or newer
+- [Node.js](https://nodejs.org/) 20.9 or newer
+
+### Run it
+
+Start the backend (it creates `data/app.db` and applies migrations on first run):
 
 ```bash
 cd backend
 go run .
 ```
 
-On startup, the backend automatically:
-1. Connects to SQLite at `data/app.db` (or `../data/app.db`).
-2. Backs up an existing database to `data/backups/` if there are pending migrations, then applies all pending `.up.sql` migrations from `backend/migrations/`.
-3. Seeds default VRChat asset categories (`Avatar`, `Hair`, `Clothes`, etc.).
-4. Starts the HTTP server on port `8080`.
-
-- **Backend Base URL**: [http://localhost:8080](http://localhost:8080)
-- **Server Health**: [http://localhost:8080/health](http://localhost:8080/health)
-- **Database Health**: [http://localhost:8080/api/health/db](http://localhost:8080/api/health/db)
-
-### 2. Running the Frontend
-
-In a separate terminal, install dependencies and start the Next.js development server:
+In a second terminal, start the frontend:
 
 ```bash
 cd frontend
@@ -66,256 +135,83 @@ npm install
 npm run dev
 ```
 
-The frontend application will start on:
-- **URL**: [http://localhost:3000](http://localhost:3000)
+Open **http://localhost:3000**.
 
-### Environment Configuration
+> For everyday use, `npm run build` followed by `npm start` serves a faster production build.
 
-The frontend communicates with the Go backend using the `NEXT_PUBLIC_API_URL` environment variable:
+### First steps
 
-- Default: `http://localhost:8080`
-- To override, set `NEXT_PUBLIC_API_URL` in `frontend/.env.local`:
-  ```env
-  NEXT_PUBLIC_API_URL=http://localhost:8080
-  ```
+1. **Scan & Review** (sidebar) → **Settings** → add your asset folder and check the
+   *folder name → category* table, then **Save**.
+2. **Scan now**, look through the drafts, and **Accept** the ones you want — in bulk if you like.
+3. Select drafts that have a BOOTH link and press **Fetch BOOTH info** to fill names and previews.
+4. Open your avatars once with **Fetch from BOOTH** too: their Japanese names (e.g. キプフェル) help
+   the app recognise which items fit them.
 
-## Development URLs & API Endpoints
+Prefer to start by hand? **Add Asset** in the header works without any scanning.
 
-| Method | Endpoint | Description |
+### Configuration
+
+| Variable | Where | Default |
 |---|---|---|
-| `GET` | `/health` | Server health check |
-| `GET` | `/api/health/db` | SQLite database connectivity health |
-| `GET` | `/api/categories` | List categories in display order (`parent_id`, `sort_order`) |
-| `POST` | `/api/categories` | Create a category (`name`, optional `parent_id`, `sort_order`) |
-| `PUT` | `/api/categories/:id` | Rename / re-parent / reorder a category (two levels max) |
-| `DELETE` | `/api/categories/:id` | Delete a category without subcategories (its assets become uncategorized) |
-| `GET` | `/api/assets` | List assets (supports `search`, `category` (includes subcategories), `tags`, `favorite`, `has_preview`, `has_booth`, `local_status`, `sort`, `status` = `active` (default) / `draft` / `all`, `compatible_with` = avatar asset id) |
-| `GET` | `/api/assets/:id` | Retrieve single asset with category, tags, `files` and `compatible_avatars` |
-| `POST` | `/api/assets/:id/files` | Link another folder / archive / package (`path`, optional `version`, `kind`) |
-| `DELETE` | `/api/assets/:id/files/:fileId` | Unlink a file (never touches the disk) |
-| `GET` | `/api/assets/:id/status` | Check if asset's `local_path` exists on disk |
-| `POST` | `/api/assets/bulk` | Apply one change to many assets (`set_category`/`category_id`, `add_tags`, `add_compatible_avatars`, `is_favorite`); never removes tags or avatars |
-| `POST` | `/api/assets/batch-status` | Batch check `local_path` existence on disk for multiple asset IDs |
-| `POST` | `/api/assets/:id/favorite` | Toggle or set asset favorite status (`is_favorite`) |
-| `POST` | `/api/assets/:id/open-folder` | Open asset's local folder in OS file explorer |
-| `POST` | `/api/assets/:id/preview` | Upload a preview image (JPEG, PNG, WebP) |
-| `GET` | `/api/assets/:id/preview` | Serve the asset preview image |
-| `DELETE` | `/api/assets/:id/preview` | Delete the asset preview image |
-| `POST` | `/api/assets` | Create a new asset |
-| `PUT` | `/api/assets/:id` | Update an existing asset (omitting `preview_path` keeps the current preview) |
-| `DELETE` | `/api/assets/:id` | Delete an asset record (never touches `local_path`) |
-| `GET` | `/api/stats` | Unfiltered library counts (`total`, `favorites`, `drafts`, `by_category`) |
-| `GET` | `/api/booth/lookup?url=` | Fetch a BOOTH item (cached 7 days; `refresh=1` to re-fetch) and return suggestions: name, shop, category, tags, compatible avatars, images |
-| `POST` | `/api/booth/preview` | Download a BOOTH image (`{"asset_id", "url"}`, pximg.net only) as the asset preview |
-| `POST` | `/api/booth/apply` | Fill assets from their BOOTH links (`{"asset_ids", "include_tags"}`); never overwrites an existing author/category/preview |
-| `GET` | `/api/scanner/config` | Scanner settings (library roots, ignore list, archive folders, folder → category map, dependency BOOTH ids) |
-| `PUT` | `/api/scanner/config` | Save scanner settings |
-| `POST` | `/api/scanner/scan` | Scan the library roots: new assets become drafts, new files of known assets are linked to them |
-| `POST` | `/api/scanner/accept` | Accept drafts (`{"asset_ids": [...]}`) |
-| `POST` | `/api/scanner/ignore` | Remove drafts and skip their paths in later scans (files on disk untouched) |
-| `GET` | `/api/scanner/ignored` | List ignored paths |
-| `DELETE` | `/api/scanner/ignored?path=` | Let the scanner pick an ignored path up again |
-| `GET` | `/api/tags` | List all existing tags |
-| `POST` | `/api/tags` | Create or get tag |
-| `POST` | `/api/filesystem/pick-folder` | Open native Windows folder browser (local only) |
+| `PORT` | backend | `8080` |
+| `DB_PATH` | backend | `data/app.db` (relative to the repository) |
+| `PREVIEWS_DIR` | backend | `data/previews` |
+| `NEXT_PUBLIC_API_URL` | `frontend/.env.local` | `http://localhost:8080` |
 
-### API Request & Response Examples
+The backend accepts browser requests from `http://localhost:3000`.
 
-#### Toggle Favorite (`POST /api/assets/:id/favorite`)
-Optional JSON body: `{"is_favorite": true}` or empty `{}` to toggle.
-Response (`200 OK`):
-```json
-{
-  "id": 1,
-  "name": "Manuka Avatar",
-  "is_favorite": true,
-  "updated_at": "2026-09-09T08:30:00Z"
-}
+## Project structure
+
+```text
+├── backend/
+│   ├── main.go              # HTTP server, routes, startup backup + migrations
+│   ├── migrations/          # Plain SQL migrations, embedded in the binary
+│   ├── internal/
+│   │   ├── asset/           # Assets, files & versions, compatibility, previews, bulk edit
+│   │   ├── category/        # Two-level category tree
+│   │   ├── scanner/         # Folder scanner, name matching, drafts
+│   │   ├── booth/           # BOOTH lookup, cache, suggestions
+│   │   └── database/        # SQLite connection, migrations, backups
+│   └── cmd/                 # seed (sample data) and verify (end-to-end checks)
+├── frontend/
+│   ├── app/                 # Library, asset, avatar, review and category pages
+│   ├── components/          # Cards, drawer, forms, scanner and BOOTH panels
+│   │   └── ui/              # shadcn/ui components
+│   └── lib/                 # API client and helpers
+├── data/                    # Your database, previews and backups (git-ignored)
+├── docs/                    # API reference and screenshots
+└── PROJECT_SPEC.md          # Specification and milestone history
 ```
 
-#### Batch Check Filesystem Status (`POST /api/assets/batch-status`)
-Request body:
-```json
-{
-  "ids": [1, 2, 3]
-}
-```
-Response (`200 OK`):
-```json
-{
-  "statuses": {
-    "1": true,
-    "2": false,
-    "3": false
-  }
-}
-```
+## Development
 
-#### Upload Preview (`POST /api/assets/:id/preview`)
-Accepts `multipart/form-data` with one image file (`image/jpeg`, `image/png`, `image/webp`, max 10MB).
-Response (`200 OK`):
-```json
-{
-  "id": 1,
-  "name": "Manuka Avatar",
-  "preview_path": "data/previews/1.webp",
-  "updated_at": "2026-09-09T07:20:00Z"
-}
-```
-
-#### Retrieve Preview (`GET /api/assets/:id/preview`)
-Returns image binary stream with appropriate `Content-Type` (`image/jpeg`, `image/png`, or `image/webp`) and caching headers.
-
-#### Delete Preview (`DELETE /api/assets/:id/preview`)
-Response (`200 OK`):
-```json
-{
-  "message": "preview deleted"
-}
-```
-
-#### Check File Existence Status (`GET /api/assets/:id/status`)
-Response (`200 OK`):
-```json
-{
-  "exists": true
-}
-```
-
-#### Open Asset Folder (`POST /api/assets/:id/open-folder`)
-Response (`200 OK`):
-```json
-{
-  "status": "ok"
-}
-```
-
-#### Create Asset (`POST /api/assets`)
-```json
-{
-  "name": "Manuka Avatar",
-  "category_id": 1,
-  "author": "Jingo Channel",
-  "booth_url": "https://booth.pm/en/items/4394473",
-  "local_path": "D:/VRChat/Avatars/Manuka",
-  "description": "Base model for Manuka",
-  "tags": ["avatar", "female", "physbone"]
-}
-```
-
-Response (`201 Created`):
-```json
-{
-  "id": 1,
-  "name": "Manuka Avatar",
-  "category_id": 1,
-  "category": {
-    "id": 1,
-    "name": "Avatar"
-  },
-  "author": "Jingo Channel",
-  "booth_url": "https://booth.pm/en/items/4394473",
-  "local_path": "D:/VRChat/Avatars/Manuka",
-  "preview_path": "",
-  "description": "Base model for Manuka",
-  "tags": ["avatar", "female", "physbone"],
-  "is_favorite": false,
-  "created_at": "2026-09-09T06:20:00Z",
-  "updated_at": "2026-09-09T06:20:00Z"
-}
-```
-
-#### Update Asset (`PUT /api/assets/:id`)
-```json
-{
-  "name": "Manuka Avatar v2",
-  "category_id": 1,
-  "author": "Jingo Channel",
-  "tags": ["avatar", "female", "updated"]
-}
-```
-
-#### Delete Asset (`DELETE /api/assets/:id`)
-Response (`200 OK`):
-```json
-{
-  "message": "asset deleted"
-}
-```
-
-## Scanning Your Asset Folder
-
-Open **Scan & Review** in the sidebar (`/review`):
-
-1. **Settings** → add your library folder (e.g. `N:\Unity Materials`) and adjust the folder → category map.
-2. **Scan now**. The scanner only reads: folder listings, small readme / `.url` files and cover images.
-   - Level 1 folders are categories (`Clothes`, `Models`, …); level 2 entries are assets.
-   - Zips in `LEGACY` / `Zips` folders are matched to their extracted folder by name (case, width,
-     separators and version are ignored), even across categories. Several versions are grouped into one asset.
-   - BOOTH links come from an item id in the folder name or from readme / `.url` files (dependencies such as
-     lilToon are skipped). Links to avatars you own become "compatible avatar" suggestions.
-   - `AvatarPass` (and anything in **Never scan**) is never opened.
-3. Review the drafts: accept, edit, change category in bulk, or ignore. Re-scanning only reports what is new.
-
-## Importing From BOOTH
-
-The app only contacts booth.pm when you press a button, at most once per second, and caches each
-item for a week.
-
-- **Add / Edit form** → paste a BOOTH URL → **Fetch from BOOTH** → pick the preview image, name, author,
-  category, tags and compatible avatars to copy → save. The chosen image is downloaded into
-  `data/previews/` (never hotlinked).
-- **Scan & Review** → select drafts → **🛒 Fetch BOOTH info**, or **⤓ fetch info** on one draft. Drafts without
-  a link get a "search on BOOTH ↗" shortcut.
-- Compatible avatars are matched by BOOTH links in the description, avatar names in the
-  name / variations / description / tags, and the Japanese name of your library avatars once their
-  BOOTH page has been fetched (e.g. "キプフェル" for Kipfel).
-
-## Using the Library
-
-- **Click a card** to open it in a side drawer (Ctrl/middle-click opens the full page). The URL keeps `?asset=ID`.
-- **Grid / list** view and **S / M / L** card size are remembered per browser.
-- **Select** turns on multi-select: set a category, add a tag, mark as compatible with an avatar, or favorite many assets at once.
-- **Preview images**: click the square, drop an image on it, or paste one with Ctrl+V — in the add/edit form and in the asset view.
-- **Theme**: the sun/moon button in the header switches between Dark (default), Light and System; the choice is remembered per browser.
-- **Avatar pages** (`/avatars/:id`, listed in the sidebar) show everything compatible with an avatar, grouped by category.
-
-## Running Tests & Verification
-
-### Run Automated Backend Tests
 ```bash
-cd backend
-go test -v ./...
+# Backend tests (asset, category, scanner, BOOTH and database packages)
+cd backend && go test ./...
+
+# Frontend checks
+cd frontend && npx tsc --noEmit && npm run lint && npm run build
+
+# Sample data for an empty database
+cd backend && go run ./cmd/seed
 ```
 
-### Run End-to-End Verification Tool
-With the backend running:
-```bash
-cd backend
-go run ./cmd/verify
-```
+The REST API is documented in [docs/API.md](docs/API.md). Design decisions and the milestone history live in
+[PROJECT_SPEC.md](PROJECT_SPEC.md).
 
-### Seed Development Sample Assets
-To populate sample VRChat assets for visual testing:
-```bash
-cd backend
-go run ./cmd/seed
-```
+## Roadmap
 
-## Milestone Status
+Done: asset CRUD, previews, search and tags, category tree, files & versions, avatar compatibility,
+folder scanner with review, BOOTH import, refreshed UI with drawer, bulk edit, avatar pages and themes.
 
-Milestone numbers follow [PROJECT_SPEC.md](PROJECT_SPEC.md) section 15.
+Ideas for later:
 
-- [x] **Milestone 0**: Project setup (Next.js, Go HTTP server, health check, CORS, developer docs)
-- [x] **Milestone 1**: Database (SQLite setup, migrations, initial tables, seed categories, DB health check)
-- [x] **Milestone 2**: Asset CRUD (REST API, validation, tag management, filter queries, automated test suite)
-- [x] **Milestone 3**: Asset grid UI (responsive card grid, dynamic categories, search, empty/loading/error states)
-- [x] **Milestone 4**: Asset details (detail page, local file existence check, OS folder launcher, edit/delete)
-- [x] **Milestone 5**: Preview upload (local preview storage, MIME signature validation, serving, replacement & deletion)
-- [x] **Milestone 6**: Search + tags (tag creation/assignment, search across name/author/description/tags, category & multi-tag filters)
-  - Extras done early from the future roadmap: favorites, sorting, has-preview / has-BOOTH / local-status filters, URL query persistence, library stats
-- [x] **Milestone 6.5**: Cleanup (edit no longer wipes preview, lint clean, sidebar counts use unfiltered stats)
-- [x] **Milestone 7**: Data model v2 (category tree + management page, asset files & versions, avatar compatibility, draft status, automatic pre-migration backup)
-- [x] **Milestone 8**: Filesystem scanner + review screen (drafts, archive/version grouping, BOOTH id & compatibility hints, preview from cover image, ignore list)
-- [x] **Milestone 9**: BOOTH metadata import (lookup with cache & rate limit, category/tag/compat suggestions, preview download, bulk apply for drafts)
-- [x] **Milestone 10**: UI refresh (shadcn/ui + lucide, square cards with S/M/L and list view, detail drawer, preview drop/paste, bulk edit, avatar pages)
+- **Collections** — named groups such as "Halloween" or "Avatar build #1"
+- **Avatar builds** — save a full look: avatar + hair + outfit + accessories
+- **Duplicate detection** — by BOOTH link or file hash
+- **Optional Google Drive backup** of the database
+
+---
+
+<sub>Not affiliated with VRChat Inc. or pixiv Inc. (BOOTH). Item names and images belong to their creators.</sub>

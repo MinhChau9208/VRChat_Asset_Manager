@@ -130,3 +130,22 @@
     @apply font-sans;
     }
 }
+/* Native controls and scrollbars follow the dark theme. */
+.dark {
+  color-scheme: dark;
+}
+
+/* Thin, low-contrast scrollbars everywhere. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(1 0 0 / 14%) transparent;
+}
+
+/* Scrollbar that only appears while hovering the area (sidebar). */
+.scrollbar-on-hover {
+  scrollbar-color: transparent transparent;
+}
+.scrollbar-on-hover:hover,
+.scrollbar-on-hover:focus-within {
+  scrollbar-color: oklch(1 0 0 / 14%) transparent;
+}

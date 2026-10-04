@@ -114,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="flex w-full shrink-0 flex-col gap-5 [&>*]:shrink-0 border-b border-border p-3 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-60 md:overflow-y-auto md:border-b-0 md:border-r">
+    <aside className="flex w-full shrink-0 flex-col gap-5 [&>*]:shrink-0 border-b border-border p-3 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-60 md:overflow-y-auto md:border-b-0 md:border-r scrollbar-on-hover">
       <nav className="flex gap-0.5 overflow-x-auto md:flex-col">
         <NavItem
           icon={LayoutGrid}
@@ -220,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             Tags
           </SectionTitle>
-          <div className="flex max-h-48 flex-wrap gap-1 overflow-y-auto px-1.5">
+          <div className="flex max-h-48 flex-wrap gap-1 overflow-y-auto px-1.5 md:max-h-none md:overflow-visible">
             {availableTags.map((tag) => {
               const on = selectedTags.includes(tag);
               return (

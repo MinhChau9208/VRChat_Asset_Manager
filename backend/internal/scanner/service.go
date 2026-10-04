@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -350,8 +348,6 @@ func (s *Service) createDraft(
 	return created.ID, nil
 }
 
-const maxPreviewSize = 10 << 20
-
 // copyPreview copies a local image into the previews directory (never the other way).
 func (s *Service) copyPreview(assetID int64, src string) (string, error) {
 	f, err := os.Open(src)
@@ -359,40 +355,7 @@ func (s *Service) copyPreview(assetID int64, src string) (string, error) {
 		return "", err
 	}
 	defer f.Close()
-	if fi, err := f.Stat(); err != nil || fi.Size() > maxPreviewSize {
-		return "", errors.New("preview image missing or too large")
-	}
-
-	head := make([]byte, 512)
-	n, _ := io.ReadFull(f, head)
-	var ext string
-	switch http.DetectContentType(head[:n]) {
-	case "image/jpeg":
-		ext = ".jpg"
-	case "image/png":
-		ext = ".png"
-	case "image/webp":
-		ext = ".webp"
-	default:
-		return "", errors.New("unsupported preview image type")
-	}
-	if _, err := f.Seek(0, io.SeekStart); err != nil {
-		return "", err
-	}
-
-	if err := os.MkdirAll(s.previewsDir, 0755); err != nil {
-		return "", err
-	}
-	name := fmt.Sprintf("%d%s", assetID, ext)
-	dst, err := os.Create(filepath.Join(s.previewsDir, name))
-	if err != nil {
-		return "", err
-	}
-	defer dst.Close()
-	if _, err := io.Copy(dst, f); err != nil {
-		return "", err
-	}
-	return "data/previews/" + name, nil
+	return asset.SavePreviewImage(s.previewsDir, assetID, f)
 }
 
 // Accept turns drafts into regular library assets.

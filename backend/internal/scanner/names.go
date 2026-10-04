@@ -129,3 +129,20 @@ func containsWord(key, word string) bool {
 	}
 	return strings.Contains(" "+key+" ", " "+word+" ")
 }
+
+// Exported helpers shared with the BOOTH importer.
+
+// MatchKey is the normalized name used to compare asset and avatar names.
+func MatchKey(name string) string { return matchKey(name) }
+
+// ContainsWord reports whether key contains word as whole tokens.
+func ContainsWord(key, word string) bool { return containsWord(key, word) }
+
+// BoothIDFromURL extracts the item id from a BOOTH URL ("" if none).
+func BoothIDFromURL(url string) string { return boothIDFromURL(url) }
+
+// BoothIDsInText returns the BOOTH item ids linked in a text.
+func BoothIDsInText(text string) []string { return boothIDsInText(text) }
+
+// BoothItemURL is the canonical URL stored for a BOOTH item id.
+func BoothItemURL(id string) string { return boothItemURL(id) }

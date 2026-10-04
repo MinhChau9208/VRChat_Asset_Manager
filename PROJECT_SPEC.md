@@ -1135,17 +1135,10 @@ That is the long-term direction.
 
 # 23. Immediate next action
 
-Milestones 0–6.5 are done (see README "Milestone Status").
+Milestones 0–10 are done (see README "Milestone Status").
 
-Continue with:
-
-    Milestone 7  (data model v2)
-        ↓
-    Milestone 8  (scanner + review)
-        ↓
-    Milestone 9  (BOOTH import)
-        ↓
-    Milestone 10 (UI refresh)
+Candidates for what comes next are in section 16 (Future roadmap): collections,
+duplicate detection, avatar builds, optional Google Drive backup.
 
 One milestone at a time; every automated guess stays a suggestion the user confirms.
 

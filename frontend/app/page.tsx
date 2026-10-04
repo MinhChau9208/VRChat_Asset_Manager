@@ -428,9 +428,9 @@ function LibraryView() {
                 {debouncedSearch && !isLoading && <> matching “{debouncedSearch}”</>}
               </span>
               {compatibleWith && (
-                <span className="inline-flex items-center gap-1.5 rounded-md border border-violet-800/70 bg-violet-950/40 px-2 py-0.5 text-xs text-violet-200">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-violet-300 dark:border-violet-800/70 bg-violet-100 dark:bg-violet-950/40 px-2 py-0.5 text-xs text-violet-800 dark:text-violet-200">
                   <UserRound className="size-3.5" /> Compatible with {compatibleWith.name}
-                  <button type="button" onClick={() => setCompatibleWith(null)} aria-label="Show all assets" className="hover:text-white">
+                  <button type="button" onClick={() => setCompatibleWith(null)} aria-label="Show all assets" className="hover:text-foreground">
                     <X className="size-3.5" />
                   </button>
                 </span>

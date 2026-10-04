@@ -293,7 +293,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Global Form Error Banner */}
       {formError && (
-        <div className="p-3.5 rounded-xl text-xs bg-rose-950/50 border border-rose-800/70 text-rose-300 flex items-center justify-between">
+        <div className="p-3.5 rounded-xl text-xs bg-rose-100 dark:bg-rose-950/50 border border-rose-300 dark:border-rose-800/70 text-rose-700 dark:text-rose-300 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TriangleAlert className="size-4 shrink-0" />
             <span>{formError}</span>
@@ -301,7 +301,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
           <button
             type="button"
             onClick={() => setFormError(null)}
-            className="text-neutral-400 hover:text-white cursor-pointer px-1"
+            className="text-muted-foreground hover:text-foreground cursor-pointer px-1"
           >
             <X className="size-4" />
           </button>
@@ -326,15 +326,15 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             The image is saved when you save the asset.
           </p>
           {(pendingPreviewFile || pendingPreviewUrl) && (
-            <p className="text-emerald-400">New preview selected — it will be saved with the asset.</p>
+            <p className="text-emerald-600 dark:text-emerald-400">New preview selected — it will be saved with the asset.</p>
           )}
           {previewError && <p className="text-destructive">{previewError}</p>}
         </div>
       </div>
 
       {/* Basic Info Section */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-5 space-y-4 backdrop-blur-sm">
-        <h3 className="text-xs uppercase font-mono tracking-wider text-cyan-400 font-semibold">
+      <div className="rounded-xl border border-border bg-card/60 p-5 space-y-4 backdrop-blur-sm">
+        <h3 className="text-xs uppercase font-mono tracking-wider text-primary font-semibold">
           General Information
         </h3>
 
@@ -342,9 +342,9 @@ export const AssetForm: React.FC<AssetFormProps> = ({
         <div>
           <label
             htmlFor="asset-name"
-            className="block text-xs font-medium text-neutral-300 mb-1"
+            className="block text-xs font-medium text-foreground mb-1"
           >
-            Asset Name <span className="text-rose-400">*</span>
+            Asset Name <span className="text-rose-600 dark:text-rose-400">*</span>
           </label>
           <input
             id="asset-name"
@@ -358,14 +358,14 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               }
             }}
             placeholder="e.g. Cute Anime Hair, Gothic Dress, Selestia..."
-            className={`w-full rounded-lg border bg-neutral-950/80 px-3 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-1 transition-all ${
+            className={`w-full rounded-lg border bg-background/80 px-3 py-2 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 transition-all ${
               fieldErrors.name
                 ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
-                : "border-neutral-800 focus:border-cyan-500 focus:ring-cyan-500"
+                : "border-border focus:border-ring focus:ring-ring"
             }`}
           />
           {fieldErrors.name && (
-            <p className="mt-1 text-xs text-rose-400">{fieldErrors.name}</p>
+            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">{fieldErrors.name}</p>
           )}
         </div>
 
@@ -375,7 +375,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
           <div>
             <label
               htmlFor="asset-category"
-              className="block text-xs font-medium text-neutral-300 mb-1"
+              className="block text-xs font-medium text-foreground mb-1"
             >
               Category
             </label>
@@ -387,7 +387,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                 setCategoryId(val === "" ? null : Number(val));
               }}
               disabled={isLoadingMetadata}
-              className="w-full rounded-lg border border-neutral-800 bg-neutral-950/80 px-3 py-2 text-xs sm:text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all cursor-pointer disabled:opacity-50"
+              className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-xs sm:text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-all cursor-pointer disabled:opacity-50"
             >
               <option value="">None / Uncategorized</option>
               {buildCategoryTree(categories).map((root) =>
@@ -408,7 +408,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               )}
             </select>
             {isLoadingMetadata && (
-              <p className="mt-1 text-xs text-neutral-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Loading categories...
               </p>
             )}
@@ -418,7 +418,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
           <div>
             <label
               htmlFor="asset-author"
-              className="block text-xs font-medium text-neutral-300 mb-1"
+              className="block text-xs font-medium text-foreground mb-1"
             >
               Author / Creator
             </label>
@@ -428,7 +428,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
               placeholder="e.g. Komado, 久, Booth Creator..."
-              className="w-full rounded-lg border border-neutral-800 bg-neutral-950/80 px-3 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all"
+              className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-all"
             />
           </div>
         </div>
@@ -437,7 +437,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
         <div>
           <label
             htmlFor="asset-booth-url"
-            className="block text-xs font-medium text-neutral-300 mb-1"
+            className="block text-xs font-medium text-foreground mb-1"
           >
             BOOTH URL
           </label>
@@ -453,26 +453,26 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               }
             }}
             placeholder="https://booth.pm/en/items/..."
-            className={`w-full rounded-lg border bg-neutral-950/80 px-3 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:outline-none focus:ring-1 transition-all ${
+            className={`w-full rounded-lg border bg-background/80 px-3 py-2 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 transition-all ${
               fieldErrors.boothUrl
                 ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
-                : "border-neutral-800 focus:border-cyan-500 focus:ring-cyan-500"
+                : "border-border focus:border-ring focus:ring-ring"
             }`}
           />
           <button
             type="button"
             onClick={handleFetchBooth}
             disabled={!boothUrl.trim() || isFetchingBooth}
-            className="px-3 py-2 rounded-lg bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold border border-red-700/60 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-2 rounded-lg bg-red-100 dark:bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold border border-red-300 dark:border-red-700/60 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             title="Fill name, author, category, preview and compatible avatars from BOOTH"
           >
             {isFetchingBooth ? "Fetching…" : "Fetch from BOOTH"}
           </button>
           </div>
           {fieldErrors.boothUrl && (
-            <p className="mt-1 text-xs text-rose-400">{fieldErrors.boothUrl}</p>
+            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">{fieldErrors.boothUrl}</p>
           )}
-          {boothError && <p className="mt-1 text-xs text-rose-400">{boothError}</p>}
+          {boothError && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">{boothError}</p>}
           {boothSuggestion && (
             <BoothImportPanel
               suggestion={boothSuggestion}
@@ -486,7 +486,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
         <div>
           <label
             htmlFor="asset-description"
-            className="block text-xs font-medium text-neutral-300 mb-1"
+            className="block text-xs font-medium text-foreground mb-1"
           >
             Description & Notes
           </label>
@@ -496,16 +496,16 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Add notes, installation requirements, shader details, or instructions..."
-            className="w-full rounded-lg border border-neutral-800 bg-neutral-950/80 px-3 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all resize-y"
+            className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-all resize-y"
           />
         </div>
       </div>
 
       {/* Filesystem Location Section */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-5 space-y-3 backdrop-blur-sm">
-        <h3 className="text-xs uppercase font-mono tracking-wider text-cyan-400 font-semibold flex items-center justify-between">
+      <div className="rounded-xl border border-border bg-card/60 p-5 space-y-3 backdrop-blur-sm">
+        <h3 className="text-xs uppercase font-mono tracking-wider text-primary font-semibold flex items-center justify-between">
           <span>Local Filesystem Path</span>
-          <span className="text-xs text-neutral-400 lowercase font-normal">
+          <span className="text-xs text-muted-foreground lowercase font-normal">
             safe reference &bull; files are never deleted
           </span>
         </h3>
@@ -513,7 +513,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
         <div>
           <label
             htmlFor="asset-local-path"
-            className="block text-xs font-medium text-neutral-300 mb-1"
+            className="block text-xs font-medium text-foreground mb-1"
           >
             Windows Directory or File Path
           </label>
@@ -524,24 +524,24 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               value={localPath}
               onChange={(e) => setLocalPath(e.target.value)}
               placeholder="e.g. C:\VRChat Assets\Hair\CuteHair or \\server\share\..."
-              className="flex-1 font-mono rounded-lg border border-neutral-800 bg-neutral-950/80 px-3 py-2 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all"
+              className="flex-1 font-mono rounded-lg border border-border bg-background/80 px-3 py-2 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-all"
             />
             <button
               type="button"
               onClick={handlePickFolder}
               disabled={isPickingFolder}
               title="Open Windows Folder Browser"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-neutral-800 hover:bg-neutral-700 active:bg-neutral-800 text-neutral-200 hover:text-white border border-neutral-700 text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted hover:bg-accent active:bg-muted text-foreground hover:text-foreground border border-border text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
             >
               {isPickingFolder ? (
                 <>
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary/40 border-t-transparent" />
                   <span className="hidden sm:inline">Browsing...</span>
                 </>
               ) : (
                 <>
                   <svg
-                    className="w-3.5 h-3.5 text-cyan-400"
+                    className="w-3.5 h-3.5 text-primary"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -558,7 +558,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               )}
             </button>
           </div>
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Paste any local Windows folder path or UNC network share. Deleting an
             asset record will never delete or modify the contents of this path.
           </p>
@@ -566,31 +566,31 @@ export const AssetForm: React.FC<AssetFormProps> = ({
       </div>
 
       {/* Tags Section */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-5 space-y-4 backdrop-blur-sm">
-        <h3 className="text-xs uppercase font-mono tracking-wider text-cyan-400 font-semibold">
+      <div className="rounded-xl border border-border bg-card/60 p-5 space-y-4 backdrop-blur-sm">
+        <h3 className="text-xs uppercase font-mono tracking-wider text-primary font-semibold">
           Tags & Metadata
         </h3>
 
         {/* Assigned Tag Chips */}
         <div>
-          <label className="block text-xs font-medium text-neutral-300 mb-2">
+          <label className="block text-xs font-medium text-foreground mb-2">
             Assigned Tags ({tags.length})
           </label>
           {tags.length === 0 ? (
-            <p className="text-xs text-neutral-500 italic">No tags assigned yet.</p>
+            <p className="text-xs text-muted-foreground italic">No tags assigned yet.</p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {tags.map((tag, idx) => (
                 <span
                   key={`${tag}-${idx}`}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-neutral-800 text-neutral-200 border border-neutral-700/80 group transition-all"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-muted text-foreground border border-border/80 group transition-all"
                 >
-                  <span className="text-cyan-400/80 text-xs">#</span>
+                  <span className="text-primary text-xs">#</span>
                   <span>{tag}</span>
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(idx)}
-                    className="text-neutral-400 hover:text-rose-400 transition-colors cursor-pointer p-0.5"
+                    className="text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer p-0.5"
                     title={`Remove tag "${tag}"`}
                   >
                     <X className="size-3.5" />
@@ -620,25 +620,25 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                 }
               }}
               placeholder="Type tag name and press Enter or comma..."
-              className="flex-1 rounded-lg border border-neutral-800 bg-neutral-950/80 px-3 py-1.5 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 transition-all"
+              className="flex-1 rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-all"
             />
             <button
               type="button"
               onClick={() => handleAddTag()}
-              className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700 transition-colors cursor-pointer shrink-0"
+              className="px-3 py-1.5 rounded-lg bg-muted hover:bg-accent text-foreground text-xs font-medium border border-border transition-colors cursor-pointer shrink-0"
             >
               + Add
             </button>
           </div>
           {fieldErrors.tagInput && (
-            <p className="mt-1 text-xs text-rose-400">{fieldErrors.tagInput}</p>
+            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">{fieldErrors.tagInput}</p>
           )}
         </div>
 
         {/* Quick-Add Suggestions from Existing Tags */}
         {suggestedTags.length > 0 && (
           <div>
-            <span className="block text-xs text-neutral-400 mb-1.5">
+            <span className="block text-xs text-muted-foreground mb-1.5">
               Suggestions from your library (click to add):
             </span>
             <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
@@ -647,7 +647,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                   key={t.id}
                   type="button"
                   onClick={() => handleAddTag(t.name)}
-                  className="px-2 py-0.5 rounded text-xs bg-neutral-950 hover:bg-neutral-800 text-neutral-400 hover:text-cyan-300 border border-neutral-800 hover:border-neutral-700 transition-colors cursor-pointer"
+                  className="px-2 py-0.5 rounded text-xs bg-background hover:bg-muted text-muted-foreground hover:text-primary border border-border hover:border-border transition-colors cursor-pointer"
                 >
                   +{t.name}
                 </button>
@@ -657,7 +657,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
         )}
 
         {/* Compatible Avatars */}
-        <div className="pt-2 border-t border-neutral-800/60">
+        <div className="pt-2 border-t border-border/60">
           <CompatibleAvatarsInput
             value={compatibleAvatars}
             onChange={setCompatibleAvatars}
@@ -673,7 +673,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             type="button"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-400 hover:text-neutral-200 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 transition-colors cursor-pointer disabled:opacity-50"
+            className="px-4 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground bg-card hover:bg-muted border border-border transition-colors cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>
@@ -682,7 +682,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-600 text-white text-xs font-semibold shadow-lg shadow-cyan-950/40 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 active:bg-primary text-primary-foreground text-xs font-semibold shadow-lg shadow-primary/20 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? (
             <>

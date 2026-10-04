@@ -224,7 +224,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
   return (
     <div className="space-y-5">
       {asset.status === "draft" && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-700/50 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 dark:border-amber-700/50 bg-amber-100 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
           <span className="flex-1">This is a draft from the scanner. It stays hidden from the library until you accept it.</span>
           <Button size="sm" onClick={handleAccept} className="bg-emerald-600 text-white hover:bg-emerald-500">
             <Check /> Accept
@@ -252,7 +252,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
             size="icon"
             onClick={handleFavorite}
             aria-label={asset.is_favorite ? "Remove from favorites" : "Add to favorites"}
-            className={cn(asset.is_favorite && "text-rose-400 hover:text-rose-300")}
+            className={cn(asset.is_favorite && "text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300")}
           >
             <Heart className={cn(asset.is_favorite && "fill-current")} />
           </Button>
@@ -330,7 +330,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
           {hasPath && (
             <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
               <div className="mb-1 flex items-center gap-2 text-xs">
-                <span className={missing ? "text-amber-300" : "text-emerald-400"}>
+                <span className={missing ? "text-amber-700 dark:text-amber-300" : "text-emerald-600 dark:text-emerald-400"}>
                   ● {missing ? "Missing from disk" : "On disk"}
                 </span>
               </div>
@@ -368,7 +368,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
                     <Link
                       key={c.avatar_name}
                       href={`/avatars/${c.avatar_asset_id}`}
-                      className="inline-flex items-center gap-1 rounded-md border border-violet-800/70 bg-violet-950/40 px-2 py-0.5 text-xs text-violet-200 hover:border-violet-500"
+                      className="inline-flex items-center gap-1 rounded-md border border-violet-300 dark:border-violet-800/70 bg-violet-100 dark:bg-violet-950/40 px-2 py-0.5 text-xs text-violet-800 dark:text-violet-200 hover:border-violet-500"
                     >
                       <UserRound className="size-3.5" /> {c.avatar_name}
                     </Link>
@@ -387,7 +387,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
           )}
 
           {isAvatar && (
-            <Link href={`/avatars/${asset.id}`} className="inline-flex items-center gap-1.5 text-sm text-violet-300 hover:text-violet-200">
+            <Link href={`/avatars/${asset.id}`} className="inline-flex items-center gap-1.5 text-sm text-violet-700 dark:text-violet-300 hover:text-violet-800 dark:hover:text-violet-200">
               <UserRound className="size-4" /> Everything compatible with this avatar →
             </Link>
           )}

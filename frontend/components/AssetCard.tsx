@@ -72,8 +72,8 @@ export const AssetCard: React.FC<AssetCardProps> = ({
       className={cn(
         "flex size-8 items-center justify-center rounded-full border backdrop-blur-sm transition-all",
         asset.is_favorite
-          ? "border-rose-500/70 bg-rose-950/80 text-rose-400"
-          : "border-white/10 bg-black/50 text-white/70 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-rose-300"
+          ? "border-rose-500/70 bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400"
+          : "border-white/10 bg-black/50 text-white/80 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-rose-300"
       )}
     >
       <Heart className={cn("size-4", asset.is_favorite && "fill-current")} />
@@ -140,7 +140,7 @@ export const AssetCard: React.FC<AssetCardProps> = ({
         </div>
         {missing && (
           <span title="Files missing from disk">
-            <TriangleAlert className="size-4 text-amber-400" />
+            <TriangleAlert className="size-4 text-amber-600 dark:text-amber-400" />
           </span>
         )}
         <div className="w-8">{favoriteButton}</div>

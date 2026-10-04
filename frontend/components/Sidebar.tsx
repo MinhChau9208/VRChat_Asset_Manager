@@ -51,19 +51,19 @@ function NavItem({
     indent && "md:pl-9",
     active
       ? tone === "favorite"
-        ? "bg-rose-500/15 text-rose-300"
+        ? "bg-rose-500/15 text-rose-700 dark:text-rose-300"
         : "bg-primary/15 text-primary"
       : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
   );
   const content = (
     <>
-      {Icon && <Icon className={cn("size-4 shrink-0", tone === "favorite" && "text-rose-400")} />}
+      {Icon && <Icon className={cn("size-4 shrink-0", tone === "favorite" && "text-rose-600 dark:text-rose-400")} />}
       <span className="flex-1 truncate">{label}</span>
       {count !== undefined && count > 0 && (
         <span
           className={cn(
             "text-xs tabular-nums",
-            tone === "review" ? "rounded bg-amber-500/15 px-1.5 text-amber-300" : "text-muted-foreground/70"
+            tone === "review" ? "rounded bg-amber-500/15 px-1.5 text-amber-700 dark:text-amber-300" : "text-muted-foreground/70"
           )}
         >
           {count}

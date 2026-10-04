@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Box, Plus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
@@ -44,7 +45,8 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange, isC
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2">
+        <ThemeToggle />
         <Button asChild size="sm">
           <Link href="/assets/new" id="add-asset-header-btn">
             <Plus />

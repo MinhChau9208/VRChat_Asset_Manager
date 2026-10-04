@@ -96,7 +96,7 @@ function AvatarView({ id }: { id: number }) {
         </Link>
 
         {/* Hero */}
-        <section className="flex flex-col gap-6 rounded-2xl border border-border bg-gradient-to-br from-violet-950/40 via-card/40 to-card/20 p-6 sm:flex-row sm:items-center">
+        <section className="flex flex-col gap-6 rounded-2xl border border-border bg-gradient-to-br from-violet-100 dark:from-violet-950/40 via-card/40 to-card/20 p-6 sm:flex-row sm:items-center">
           <div className="size-36 shrink-0 overflow-hidden rounded-2xl border border-border bg-muted sm:size-44">
             {src ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -109,7 +109,7 @@ function AvatarView({ id }: { id: number }) {
           </div>
           <div className="min-w-0 flex-1 space-y-3">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-violet-300/80">Avatar</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-violet-700 dark:text-violet-300/80">Avatar</p>
               <h1 className="text-2xl font-semibold leading-tight sm:text-3xl">{avatar?.name ?? "…"}</h1>
               {avatar?.author && <p className="mt-1 text-sm text-muted-foreground">by {avatar.author}</p>}
             </div>

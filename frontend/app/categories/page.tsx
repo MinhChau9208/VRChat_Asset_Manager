@@ -16,9 +16,9 @@ import {
 import { Trash2 } from "lucide-react";
 
 const inputClass =
-  "rounded-lg border border-neutral-800 bg-neutral-950/80 px-3 py-1.5 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500";
+  "rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring";
 const iconButtonClass =
-  "h-7 w-7 inline-flex items-center justify-center rounded-md text-xs text-neutral-400 hover:text-white hover:bg-neutral-800 border border-transparent hover:border-neutral-700 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed";
+  "h-7 w-7 inline-flex items-center justify-center rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -126,7 +126,7 @@ export default function CategoriesPage() {
     return (
       <li
         key={cat.id}
-        className={`flex flex-wrap items-center gap-2 py-2 px-3 rounded-lg hover:bg-neutral-900/70 ${
+        className={`flex flex-wrap items-center gap-2 py-2 px-3 rounded-lg hover:bg-card/70 ${
           isChild ? "ml-6 sm:ml-10" : ""
         }`}
       >
@@ -171,13 +171,13 @@ export default function CategoriesPage() {
                 setEditingId(cat.id);
                 setEditName(cat.name);
               }}
-              className={`text-left cursor-text ${isChild ? "text-sm text-neutral-300" : "text-sm font-semibold text-white"}`}
+              className={`text-left cursor-text ${isChild ? "text-sm text-foreground" : "text-sm font-semibold text-foreground"}`}
               title="Click to rename"
             >
               {cat.name}
             </button>
           )}
-          <div className="text-xs text-neutral-500">
+          <div className="text-xs text-muted-foreground">
             {count} asset{count === 1 ? "" : "s"}
             {node && node.children.length > 0 && ` · ${node.children.length} subcategories`}
           </div>
@@ -207,7 +207,7 @@ export default function CategoriesPage() {
           type="button"
           onClick={() => handleDelete(cat)}
           disabled={busy || Boolean(node && node.children.length > 0)}
-          className={`${iconButtonClass} hover:text-rose-400`}
+          className={`${iconButtonClass} hover:text-rose-600 dark:hover:text-rose-400`}
           title={node && node.children.length > 0 ? "Move or delete its subcategories first" : "Delete"}
         >
           <Trash2 className="size-4" />
@@ -217,15 +217,15 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <Link href="/" className="text-xs text-neutral-400 hover:text-cyan-400 transition-colors">
+            <Link href="/" className="text-xs text-muted-foreground hover:text-primary transition-colors">
               ← Back to library
             </Link>
-            <h1 className="mt-1 text-xl font-bold tracking-tight text-white">Categories</h1>
-            <p className="text-xs text-neutral-400 mt-0.5">
+            <h1 className="mt-1 text-xl font-bold tracking-tight text-foreground">Categories</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Two levels: a category can hold subcategories. Filtering by a parent also shows its subcategories&apos; assets.
             </p>
           </div>
@@ -233,7 +233,7 @@ export default function CategoriesPage() {
 
         <form
           onSubmit={handleCreate}
-          className="flex flex-col sm:flex-row gap-2 p-4 rounded-xl bg-neutral-900/60 border border-neutral-800"
+          className="flex flex-col sm:flex-row gap-2 p-4 rounded-xl bg-card/60 border border-border"
         >
           <input
             value={newName}
@@ -256,20 +256,20 @@ export default function CategoriesPage() {
           <button
             type="submit"
             disabled={busy || !newName.trim()}
-            className="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+            className="px-4 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold cursor-pointer disabled:opacity-50"
           >
             + Add
           </button>
         </form>
 
         {error && (
-          <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-800/60 text-xs text-rose-300">{error}</div>
+          <div className="p-3 rounded-lg bg-rose-100 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800/60 text-xs text-rose-700 dark:text-rose-300">{error}</div>
         )}
 
         {isLoading ? (
-          <p className="text-xs text-neutral-500">Loading categories…</p>
+          <p className="text-xs text-muted-foreground">Loading categories…</p>
         ) : (
-          <ul className="space-y-0.5 rounded-xl bg-neutral-900/40 border border-neutral-800 p-2">
+          <ul className="space-y-0.5 rounded-xl bg-card/40 border border-border p-2">
             {tree.map((root, i) => (
               <React.Fragment key={root.id}>
                 {renderRow(root, tree, i, root)}

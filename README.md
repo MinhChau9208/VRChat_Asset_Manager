@@ -277,6 +277,7 @@ item for a week.
 - **Grid / list** view and **S / M / L** card size are remembered per browser.
 - **Select** turns on multi-select: set a category, add a tag, mark as compatible with an avatar, or favorite many assets at once.
 - **Preview images**: click the square, drop an image on it, or paste one with Ctrl+V — in the add/edit form and in the asset view.
+- **Theme**: the sun/moon button in the header switches between Dark (default), Light and System; the choice is remembered per browser.
 - **Avatar pages** (`/avatars/:id`, listed in the sidebar) show everything compatible with an avatar, grouped by category.
 
 ## Running Tests & Verification

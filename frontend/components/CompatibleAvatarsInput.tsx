@@ -65,12 +65,12 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
 
   return (
     <div className="space-y-2">
-      <label className="block text-xs font-medium text-neutral-300">
+      <label className="block text-xs font-medium text-foreground">
         Compatible Avatars ({value.length})
       </label>
 
       {value.length === 0 ? (
-        <p className="text-xs text-neutral-500 italic">
+        <p className="text-xs text-muted-foreground italic">
           Not set. Add the avatars this asset is made for.
         </p>
       ) : (
@@ -80,8 +80,8 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
               key={`${v.avatar_asset_id ?? "name"}-${v.avatar_name}`}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${
                 v.avatar_asset_id !== null
-                  ? "bg-violet-950/50 text-violet-200 border-violet-800/70"
-                  : "bg-neutral-800 text-neutral-200 border-neutral-700/80"
+                  ? "bg-violet-100 dark:bg-violet-950/50 text-violet-800 dark:text-violet-200 border-violet-300 dark:border-violet-800/70"
+                  : "bg-muted text-foreground border-border/80"
               }`}
               title={v.avatar_asset_id !== null ? "Avatar in your library" : "Avatar not in your library"}
             >
@@ -90,7 +90,7 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
               <button
                 type="button"
                 onClick={() => onChange(value.filter((_, i) => i !== idx))}
-                className="text-neutral-400 hover:text-rose-400 transition-colors cursor-pointer p-0.5"
+                className="text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer p-0.5"
                 title={`Remove ${v.avatar_name}`}
               >
                 <X className="size-3.5" />
@@ -108,7 +108,7 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
               const avatar = libraryAvatars.find((a) => a.id === Number(e.target.value));
               if (avatar) add({ avatar_asset_id: avatar.id, avatar_name: avatar.name });
             }}
-            className="sm:w-56 rounded-lg border border-neutral-800 bg-neutral-950/80 px-3 py-1.5 text-xs sm:text-sm text-white focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer"
+            className="sm:w-56 rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs sm:text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
           >
             <option value="">+ From your library…</option>
             {unpicked.map((a) => (
@@ -130,12 +130,12 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
               }
             }}
             placeholder="Other avatar name (e.g. Manuka) and press Enter"
-            className="flex-1 rounded-lg border border-neutral-800 bg-neutral-950/80 px-3 py-1.5 text-xs sm:text-sm text-white placeholder-neutral-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+            className="flex-1 rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
           />
           <button
             type="button"
             onClick={addByName}
-            className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700 transition-colors cursor-pointer shrink-0"
+            className="px-3 py-1.5 rounded-lg bg-muted hover:bg-accent text-foreground text-xs font-medium border border-border transition-colors cursor-pointer shrink-0"
           >
             + Add
           </button>

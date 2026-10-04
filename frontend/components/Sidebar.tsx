@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Category } from "@/lib/api";
+import Link from "next/link";
+import { Category, buildCategoryTree } from "@/lib/api";
 
 interface SidebarProps {
   categories: Category[];
@@ -34,12 +35,20 @@ const getCategoryIcon = (name: string) => {
       return "💍";
     case "gimmick":
       return "✨";
-    case "texture":
+    case "outfit":
+      return "👗";
+    case "face":
+      return "🙂";
+    case "animation":
+      return "💃";
+    case "texture & material":
       return "🎨";
-    case "material":
-      return "🔮";
-    case "shader":
-      return "🌈";
+    case "tool & shader":
+      return "🛠️";
+    case "world":
+      return "🌍";
+    case "audio":
+      return "🎵";
     case "other":
       return "📦";
     default:
@@ -126,6 +135,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
             Categories
           </h2>
+          <Link
+            href="/categories"
+            className="text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors"
+          >
+            Manage
+          </Link>
         </div>
 
         <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 scrollbar-none">
@@ -140,33 +155,45 @@ export const Sidebar: React.FC<SidebarProps> = ({
               ))}
             </div>
           ) : (
-            categories.map((cat) => {
-              const isSelected = !isFavoriteOnly && selectedCategory.toLowerCase() === cat.name.toLowerCase();
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => {
-                    if (isFavoriteOnly && onToggleFavoriteOnly) {
-                      onToggleFavoriteOnly();
-                    }
-                    onSelectCategory(cat.name);
-                  }}
-                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-all whitespace-nowrap cursor-pointer text-left ${
-                    isSelected
-                      ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.1)]"
-                      : "text-neutral-400 hover:bg-neutral-900/80 hover:text-neutral-200 border border-transparent"
-                  }`}
-                >
-                  <span className="text-sm">{getCategoryIcon(cat.name)}</span>
-                  <span className="flex-1">{cat.name}</span>
-                  {categoryCounts?.[cat.id] ? (
-                    <span className="text-[10px] font-mono text-neutral-500">
-                      {categoryCounts[cat.id]}
-                    </span>
-                  ) : null}
-                </button>
+            buildCategoryTree(categories).flatMap((root) => {
+              const subtotal = root.children.reduce(
+                (sum, child) => sum + (categoryCounts?.[child.id] ?? 0),
+                categoryCounts?.[root.id] ?? 0
               );
+              const renderButton = (cat: Category, count: number, isChild: boolean) => {
+                const isSelected = !isFavoriteOnly && selectedCategory.toLowerCase() === cat.name.toLowerCase();
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      if (isFavoriteOnly && onToggleFavoriteOnly) {
+                        onToggleFavoriteOnly();
+                      }
+                      onSelectCategory(cat.name);
+                    }}
+                    className={`flex items-center gap-2.5 rounded-lg py-2 text-xs font-medium transition-all whitespace-nowrap cursor-pointer text-left ${
+                      isChild ? "px-3 md:pl-9" : "px-3"
+                    } ${
+                      isSelected
+                        ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.1)]"
+                        : "text-neutral-400 hover:bg-neutral-900/80 hover:text-neutral-200 border border-transparent"
+                    }`}
+                  >
+                    {!isChild && <span className="text-sm">{getCategoryIcon(cat.name)}</span>}
+                    <span className="flex-1">{cat.name}</span>
+                    {count > 0 && (
+                      <span className="text-[10px] font-mono text-neutral-500">{count}</span>
+                    )}
+                  </button>
+                );
+              };
+              return [
+                renderButton(root, subtotal, false),
+                ...root.children.map((child) =>
+                  renderButton(child, categoryCounts?.[child.id] ?? 0, true)
+                ),
+              ];
             })
           )}
         </nav>

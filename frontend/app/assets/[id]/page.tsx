@@ -17,6 +17,7 @@ import {
 } from "@/lib/api";
 import { AssetForm } from "@/components/AssetForm";
 import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
+import { AssetFilesPanel } from "@/components/AssetFilesPanel";
 
 export default function AssetDetailPage() {
   const params = useParams();
@@ -686,6 +687,46 @@ function AssetDetailView({ id }: { id: string }) {
                     )}
                   </div>
                 </div>
+
+                {/* Compatible Avatars */}
+                {asset.compatible_avatars && asset.compatible_avatars.length > 0 && (
+                  <div>
+                    <h2 className="text-[11px] uppercase tracking-wider font-mono text-neutral-500 mb-2">
+                      Compatible Avatars
+                    </h2>
+                    <div className="flex flex-wrap gap-1.5">
+                      {asset.compatible_avatars.map((c) =>
+                        c.avatar_asset_id !== null ? (
+                          <Link
+                            key={c.avatar_name}
+                            href={`/assets/${c.avatar_asset_id}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-violet-950/50 text-violet-200 border border-violet-800/70 hover:border-violet-600 transition-colors"
+                          >
+                            👤 {c.avatar_name}
+                          </Link>
+                        ) : (
+                          <span
+                            key={c.avatar_name}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-neutral-800/80 text-neutral-300 border border-neutral-700/60"
+                            title="Not in your library"
+                          >
+                            👤 {c.avatar_name}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Assets made for this avatar */}
+                {asset.category?.name.toLowerCase() === "avatar" && (
+                  <Link
+                    href={`/?compatible_with=${asset.id}&for=${encodeURIComponent(asset.name)}`}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-300 hover:text-violet-200 transition-colors"
+                  >
+                    👗 View assets compatible with this avatar →
+                  </Link>
+                )}
               </div>
 
               {/* Local Path, Open Folder & External Actions */}
@@ -766,6 +807,15 @@ function AssetDetailView({ id }: { id: string }) {
                     </button>
                   )}
                 </div>
+
+                {/* All linked files (extracted folder, archives, versions) */}
+                <AssetFilesPanel
+                  asset={asset}
+                  onChanged={(updated) => {
+                    setAsset(updated);
+                    setFileStatus(updated.local_path ? { exists: Boolean(updated.local_file_exists) } : null);
+                  }}
+                />
 
                 {/* Open BOOTH Action Button */}
                 {asset.booth_url && (

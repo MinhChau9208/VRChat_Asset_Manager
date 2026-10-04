@@ -2,12 +2,16 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"vrchat-asset-manager/backend/internal/asset"
+	"vrchat-asset-manager/backend/internal/category"
 	"vrchat-asset-manager/backend/internal/database"
 	"vrchat-asset-manager/backend/migrations"
 )
@@ -114,6 +118,14 @@ func resolvePreviewsDir() string {
 	return filepath.Join("..", "data", "previews")
 }
 
+// hasAssetsTable reports whether the database already holds application data
+// (a brand-new database needs no backup).
+func hasAssetsTable(db *database.DB) bool {
+	var n int
+	err := db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'assets'").Scan(&n)
+	return err == nil && n > 0
+}
+
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -128,6 +140,18 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v\n", err)
 	}
 	defer db.Close()
+
+	// Back up an existing database before applying new migrations to it.
+	if pending, err := db.PendingMigrations(migrations.FS); err != nil {
+		log.Fatalf("Failed to check pending migrations: %v\n", err)
+	} else if len(pending) > 0 && hasAssetsTable(db) {
+		backupPath := filepath.Join(filepath.Dir(dbPath), "backups",
+			fmt.Sprintf("app-%s-before-%s.db", time.Now().Format("20060102-150405"), strings.TrimSuffix(pending[0], ".up.sql")))
+		if err := db.Backup(backupPath); err != nil {
+			log.Fatalf("Refusing to migrate without a backup: %v\n", err)
+		}
+		log.Printf("Backed up database to %s before applying %d migration(s)\n", backupPath, len(pending))
+	}
 
 	if err := db.Migrate(migrations.FS); err != nil {
 		log.Fatalf("Failed to run database migrations: %v\n", err)
@@ -144,18 +168,8 @@ func main() {
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/api/health/db", dbHealthHandler(db))
 
-	// Categories route
-	mux.HandleFunc("GET /api/categories", func(w http.ResponseWriter, r *http.Request) {
-		categories, err := db.GetCategories()
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "failed to load categories"})
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(categories)
-	})
+	// Category routes
+	category.NewHandler(category.NewRepository(db.DB)).RegisterRoutes(mux)
 
 	// Asset domain routes
 	assetRepo := asset.NewRepository(db.DB)

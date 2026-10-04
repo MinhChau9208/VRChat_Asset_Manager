@@ -91,6 +91,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/assets/{id}/favorite", h.ToggleFavorite)
 	mux.HandleFunc("POST /api/assets/batch-status", h.BatchStatus)
 	mux.HandleFunc("POST /api/assets/{id}/open-folder", h.OpenFolder)
+	mux.HandleFunc("POST /api/assets/{id}/files", h.AddFile)
+	mux.HandleFunc("DELETE /api/assets/{id}/files/{fileId}", h.DeleteFile)
 	mux.HandleFunc("POST /api/assets/{id}/preview", h.UploadPreview)
 	mux.HandleFunc("GET /api/assets/{id}/preview", h.GetPreview)
 	mux.HandleFunc("DELETE /api/assets/{id}/preview", h.DeletePreview)
@@ -123,6 +125,14 @@ func validateBoothURL(rawURL string) error {
 		return errors.New("invalid booth_url: must be a valid http or https url")
 	}
 	return nil
+}
+
+func validateStatus(status string) error {
+	switch status {
+	case "", "active", "draft":
+		return nil
+	}
+	return errors.New("invalid status: must be 'active' or 'draft'")
 }
 
 func validateTags(tags []string) error {
@@ -191,6 +201,15 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		HasBooth:    parseBoolParam(query, "has_booth"),
 		LocalStatus: strings.TrimSpace(query.Get("local_status")),
 		Sort:        strings.TrimSpace(query.Get("sort")),
+		Status:      strings.TrimSpace(query.Get("status")),
+	}
+	if raw := strings.TrimSpace(query.Get("compatible_with")); raw != "" {
+		avatarID, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid compatible_with: must be an asset id")
+			return
+		}
+		filters.CompatibleWith = &avatarID
 	}
 
 	assets, err := h.repo.List(r.Context(), filters)
@@ -370,9 +389,18 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := validateStatus(req.Status); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	created, err := h.repo.Create(r.Context(), req)
 	if errors.Is(err, ErrCategoryNotFound) {
 		writeError(w, http.StatusBadRequest, "category not found")
+		return
+	}
+	if errors.Is(err, ErrAvatarNotFound) {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err != nil {
@@ -414,6 +442,13 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Status != nil {
+		if err := validateStatus(*req.Status); err != nil || *req.Status == "" {
+			writeError(w, http.StatusBadRequest, "invalid status: must be 'active' or 'draft'")
+			return
+		}
+	}
+
 	updated, err := h.repo.Update(r.Context(), id, req)
 	if errors.Is(err, ErrNotFound) {
 		writeError(w, http.StatusNotFound, "asset not found")
@@ -423,12 +458,78 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "category not found")
 		return
 	}
+	if errors.Is(err, ErrAvatarNotFound) {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to update asset: "+err.Error())
 		return
 	}
 
 	writeJSON(w, http.StatusOK, updated)
+}
+
+// AddFile handles POST /api/assets/{id}/files
+func (h *Handler) AddFile(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid asset id")
+		return
+	}
+
+	var req AddFileRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json request body: "+err.Error())
+		return
+	}
+	if strings.TrimSpace(req.Path) == "" {
+		writeError(w, http.StatusBadRequest, "path is required")
+		return
+	}
+	switch req.Kind {
+	case "", "folder", "archive", "unitypackage", "file":
+	default:
+		writeError(w, http.StatusBadRequest, "invalid kind: must be folder, archive, unitypackage or file")
+		return
+	}
+
+	file, err := h.repo.AddFile(r.Context(), id, req)
+	switch {
+	case errors.Is(err, ErrNotFound):
+		writeError(w, http.StatusNotFound, "asset not found")
+	case errors.Is(err, ErrPathTaken):
+		writeError(w, http.StatusConflict, err.Error())
+	case err != nil:
+		writeError(w, http.StatusInternalServerError, "failed to add file: "+err.Error())
+	default:
+		writeJSON(w, http.StatusCreated, file)
+	}
+}
+
+// DeleteFile handles DELETE /api/assets/{id}/files/{fileId}.
+// It only unlinks the file; nothing on disk is touched.
+func (h *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid asset id")
+		return
+	}
+	fileID, err := strconv.ParseInt(r.PathValue("fileId"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid file id")
+		return
+	}
+
+	err = h.repo.DeleteFile(r.Context(), id, fileID)
+	switch {
+	case errors.Is(err, ErrFileNotFound):
+		writeError(w, http.StatusNotFound, err.Error())
+	case err != nil:
+		writeError(w, http.StatusInternalServerError, "failed to remove file: "+err.Error())
+	default:
+		writeJSON(w, http.StatusOK, map[string]string{"message": "file unlinked"})
+	}
 }
 
 // UploadPreview handles POST /api/assets/{id}/preview

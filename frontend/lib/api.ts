@@ -3,7 +3,32 @@
 export interface Category {
   id: number;
   name: string;
+  parent_id: number | null;
+  sort_order: number;
   created_at: string;
+}
+
+export interface CategoryInput {
+  name: string;
+  parent_id?: number | null;
+  sort_order?: number;
+}
+
+export type AssetStatusValue = "active" | "draft";
+
+export interface AssetFile {
+  id: number;
+  asset_id: number;
+  path: string;
+  kind: "folder" | "archive" | "unitypackage" | "file";
+  version: string;
+  exists: boolean;
+  created_at: string;
+}
+
+export interface CompatAvatar {
+  avatar_asset_id: number | null;
+  avatar_name: string;
 }
 
 export interface CategoryInfo {
@@ -23,7 +48,12 @@ export interface Asset {
   description: string;
   tags: string[];
   is_favorite?: boolean;
+  status?: AssetStatusValue;
   local_file_exists?: boolean;
+  /** Only present on single-asset responses. */
+  files?: AssetFile[];
+  /** Only present on single-asset responses. */
+  compatible_avatars?: CompatAvatar[];
   created_at: string;
   updated_at: string;
 }
@@ -38,6 +68,8 @@ export interface AssetFilterParams {
   has_booth?: boolean;
   local_status?: string;
   sort?: string;
+  status?: "active" | "draft" | "all";
+  compatible_with?: number;
 }
 
 export interface Tag {
@@ -56,6 +88,8 @@ export interface CreateAssetInput {
   description?: string;
   tags?: string[];
   is_favorite?: boolean;
+  status?: AssetStatusValue;
+  compatible_avatars?: CompatAvatar[];
 }
 
 export interface UpdateAssetInput {
@@ -68,6 +102,8 @@ export interface UpdateAssetInput {
   description?: string;
   tags?: string[];
   is_favorite?: boolean;
+  status?: AssetStatusValue;
+  compatible_avatars?: CompatAvatar[];
 }
 
 const getApiBaseUrl = (): string => {
@@ -132,6 +168,14 @@ export async function getAssets(filters?: AssetFilterParams): Promise<Asset[]> {
 
   if (filters?.sort && filters.sort.trim()) {
     params.set("sort", filters.sort.trim());
+  }
+
+  if (filters?.status && filters.status !== "active") {
+    params.set("status", filters.status);
+  }
+
+  if (filters?.compatible_with !== undefined) {
+    params.set("compatible_with", String(filters.compatible_with));
   }
 
   const queryString = params.toString();
@@ -486,4 +530,82 @@ export async function getLibraryStats(): Promise<LibraryStats> {
   }
 
   return res.json();
+}
+
+async function sendJSON<T>(method: string, path: string, body: unknown, fallback: string): Promise<T> {
+  const res = await fetch(`${getApiBaseUrl()}${path}`, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${res.status}: ${fallback}`);
+  }
+
+  return res.json();
+}
+
+/**
+ * Create a category (optionally under a top-level parent).
+ */
+export function createCategory(input: CategoryInput): Promise<Category> {
+  return sendJSON("POST", "/api/categories", input, "Failed to create category");
+}
+
+/**
+ * Rename, re-parent or reorder a category. Omitting sort_order keeps it.
+ */
+export function updateCategory(id: number, input: CategoryInput): Promise<Category> {
+  return sendJSON("PUT", `/api/categories/${id}`, input, "Failed to update category");
+}
+
+/**
+ * Delete a category without subcategories; its assets become uncategorized.
+ */
+export function deleteCategory(id: number): Promise<{ message: string }> {
+  return sendJSON("DELETE", `/api/categories/${id}`, undefined, "Failed to delete category");
+}
+
+/**
+ * Link another file/folder (e.g. an archived zip or older version) to an asset.
+ */
+export function addAssetFile(
+  assetId: number | string,
+  input: { path: string; version?: string; kind?: AssetFile["kind"] }
+): Promise<AssetFile> {
+  return sendJSON("POST", `/api/assets/${assetId}/files`, input, "Failed to add file");
+}
+
+/**
+ * Unlink a file from an asset. Nothing on disk is touched.
+ */
+export function deleteAssetFile(assetId: number | string, fileId: number): Promise<{ message: string }> {
+  return sendJSON("DELETE", `/api/assets/${assetId}/files/${fileId}`, undefined, "Failed to remove file");
+}
+
+export interface CategoryNode extends Category {
+  children: Category[];
+}
+
+/**
+ * Group the flat, display-ordered category list into a two-level tree.
+ */
+export function buildCategoryTree(categories: Category[]): CategoryNode[] {
+  const roots: CategoryNode[] = [];
+  const byId = new Map<number, CategoryNode>();
+  for (const c of categories) {
+    if (c.parent_id === null) {
+      const node = { ...c, children: [] };
+      roots.push(node);
+      byId.set(c.id, node);
+    }
+  }
+  for (const c of categories) {
+    if (c.parent_id !== null) {
+      byId.get(c.parent_id)?.children.push(c);
+    }
+  }
+  return roots;
 }

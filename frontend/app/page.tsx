@@ -71,6 +71,11 @@ function LibraryView() {
     }
     return "all";
   });
+  // "Assets compatible with avatar X" (from an avatar's detail page)
+  const [compatibleWith, setCompatibleWith] = useState<{ id: number; name: string } | null>(() => {
+    const id = Number(searchParams.get("compatible_with"));
+    return id > 0 ? { id, name: searchParams.get("for") || `#${id}` } : null;
+  });
   const [sort, setSort] = useState<SortOption>(() => {
     const s = searchParams.get("sort");
     if (s === "updated" || s === "name_asc" || s === "name_desc") {
@@ -132,6 +137,10 @@ function LibraryView() {
     if (sort !== "recent") {
       params.set("sort", sort);
     }
+    if (compatibleWith) {
+      params.set("compatible_with", String(compatibleWith.id));
+      params.set("for", compatibleWith.name);
+    }
 
     const qs = params.toString();
     const target = qs ? `${pathname}?${qs}` : pathname;
@@ -145,6 +154,7 @@ function LibraryView() {
     hasBooth,
     localStatus,
     sort,
+    compatibleWith,
     pathname,
     router,
   ]);
@@ -183,6 +193,7 @@ function LibraryView() {
     has_booth: hasBooth ? true : undefined,
     local_status: localStatus !== "all" ? localStatus : undefined,
     sort: sort !== "recent" ? sort : undefined,
+    compatible_with: compatibleWith?.id,
   };
   const filtersJson = JSON.stringify(filterParams);
   const requestKey = `${filtersJson}#${reloadToken}`;
@@ -253,6 +264,7 @@ function LibraryView() {
     setHasBooth(false);
     setLocalStatus("all");
     setSort("recent");
+    setCompatibleWith(null);
   };
 
   // Optimistic favorite toggle
@@ -290,7 +302,8 @@ function LibraryView() {
       isFavoriteOnly ||
       hasPreview ||
       hasBooth ||
-      localStatus !== "all"
+      localStatus !== "all" ||
+      compatibleWith
   );
 
   return (
@@ -334,6 +347,19 @@ function LibraryView() {
                   ? "All Assets"
                   : selectedCategory}
               </h2>
+              {compatibleWith && (
+                <div className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-violet-950/50 text-violet-200 border border-violet-800/70">
+                  <span>👤 Compatible with {compatibleWith.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setCompatibleWith(null)}
+                    className="text-violet-300 hover:text-white font-bold cursor-pointer"
+                    title="Show all assets"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
               <p className="text-xs text-neutral-400 mt-0.5">
                 {isLoading ? (
                   "Loading asset library..."

@@ -16,6 +16,7 @@ interface SidebarProps {
   onClearTags?: () => void;
   isLoading: boolean;
   totalAssetsCount?: number;
+  categoryCounts?: Record<string, number>;
 }
 
 // Category icons for visual polish
@@ -59,6 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onClearTags,
   isLoading,
   totalAssetsCount,
+  categoryCounts,
 }) => {
   return (
     <aside className="w-full md:w-56 shrink-0 md:min-h-[calc(100vh-4rem)] border-b md:border-b-0 md:border-r border-neutral-800 bg-neutral-950/40 p-4 flex flex-col gap-6">
@@ -158,6 +160,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <span className="text-sm">{getCategoryIcon(cat.name)}</span>
                   <span className="flex-1">{cat.name}</span>
+                  {categoryCounts?.[cat.id] ? (
+                    <span className="text-[10px] font-mono text-neutral-500">
+                      {categoryCounts[cat.id]}
+                    </span>
+                  ) : null}
                 </button>
               );
             })

@@ -465,3 +465,25 @@ export async function getBatchAssetStatus(
 }
 
 
+export interface LibraryStats {
+  total: number;
+  favorites: number;
+  by_category: Record<string, number>;
+}
+
+/**
+ * Fetch unfiltered library counts (total, favorites, per category).
+ */
+export async function getLibraryStats(): Promise<LibraryStats> {
+  const baseUrl = getApiBaseUrl();
+  const res = await fetch(`${baseUrl}/api/stats`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${res.status}: Failed to fetch library stats`);
+  }
+
+  return res.json();
+}

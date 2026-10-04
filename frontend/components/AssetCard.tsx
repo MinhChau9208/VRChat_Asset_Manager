@@ -11,13 +11,10 @@ interface AssetCardProps {
 
 export const AssetCard: React.FC<AssetCardProps> = ({ asset, onToggleFavorite }) => {
   const [imageError, setImageError] = useState(false);
-  const [isFav, setIsFav] = useState(Boolean(asset.is_favorite));
+  // Only used when no parent handler owns the favorite state.
+  const [localFav, setLocalFav] = useState<boolean | null>(null);
   const [togglingFav, setTogglingFav] = useState(false);
-
-  // Sync state if asset changes
-  React.useEffect(() => {
-    setIsFav(Boolean(asset.is_favorite));
-  }, [asset.is_favorite]);
+  const isFav = onToggleFavorite ? Boolean(asset.is_favorite) : localFav ?? Boolean(asset.is_favorite);
 
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -25,19 +22,20 @@ export const AssetCard: React.FC<AssetCardProps> = ({ asset, onToggleFavorite })
     if (togglingFav) return;
 
     const nextVal = !isFav;
-    setIsFav(nextVal);
-    setTogglingFav(true);
+    if (onToggleFavorite) {
+      // Parent applies the optimistic update and reverts on failure.
+      onToggleFavorite(asset.id, nextVal);
+      return;
+    }
 
+    setLocalFav(nextVal);
+    setTogglingFav(true);
     try {
-      if (onToggleFavorite) {
-        onToggleFavorite(asset.id, nextVal);
-      } else {
-        const { toggleAssetFavorite } = await import("@/lib/api");
-        await toggleAssetFavorite(asset.id, nextVal);
-      }
+      const { toggleAssetFavorite } = await import("@/lib/api");
+      await toggleAssetFavorite(asset.id, nextVal);
     } catch (err) {
       console.error("Failed to toggle favorite:", err);
-      setIsFav(!nextVal); // Revert on failure
+      setLocalFav(!nextVal); // Revert on failure
     } finally {
       setTogglingFav(false);
     }

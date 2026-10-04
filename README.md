@@ -5,7 +5,7 @@ A local-first personal asset catalog and management tool for VRChat creators and
 ## Technology Stack
 
 - **Frontend**: Next.js 16 (App Router), TypeScript, Tailwind CSS
-- **Backend**: Go 1.26 (Standard Library HTTP server, REST API)
+- **Backend**: Go 1.25+ (Standard Library HTTP server, REST API)
 - **Database**: SQLite (via pure-Go driver `modernc.org/sqlite`)
 - **Storage**: Local filesystem for asset files and preview images
 
@@ -96,8 +96,9 @@ The frontend communicates with the Go backend using the `NEXT_PUBLIC_API_URL` en
 | `GET` | `/api/assets/:id/preview` | Serve the asset preview image |
 | `DELETE` | `/api/assets/:id/preview` | Delete the asset preview image |
 | `POST` | `/api/assets` | Create a new asset |
-| `PUT` | `/api/assets/:id` | Update an existing asset |
+| `PUT` | `/api/assets/:id` | Update an existing asset (omitting `preview_path` keeps the current preview) |
 | `DELETE` | `/api/assets/:id` | Delete an asset record (never touches `local_path`) |
+| `GET` | `/api/stats` | Unfiltered library counts (`total`, `favorites`, `by_category`) |
 | `GET` | `/api/tags` | List all existing tags |
 | `POST` | `/api/tags` | Create or get tag |
 | `POST` | `/api/filesystem/pick-folder` | Open native Windows folder browser (local only) |
@@ -241,11 +242,6 @@ cd backend
 go run ./cmd/verify
 ```
 
-### Run Milestone 7 Integration Tests
-```bash
-node scratch/verify_m7.mjs
-```
-
 ### Seed Development Sample Assets
 To populate sample VRChat assets for visual testing:
 ```bash
@@ -255,12 +251,18 @@ go run ./cmd/seed
 
 ## Milestone Status
 
+Milestone numbers follow [PROJECT_SPEC.md](PROJECT_SPEC.md) section 15.
+
 - [x] **Milestone 0**: Project setup (Next.js, Go HTTP server, health check, CORS, developer docs)
 - [x] **Milestone 1**: Database (SQLite setup, migrations, initial tables, seed categories, DB health check)
 - [x] **Milestone 2**: Asset CRUD (REST API, validation, tag management, filter queries, automated test suite)
-- [x] **Milestone 3**: Asset Grid UI (Next.js asset library, responsive card grid, dynamic categories, search, empty/loading states)
-- [x] **Milestone 4**: Asset Details (Read-only detail page, preview/metadata inspection, local file existence check, OS folder launcher)
-- [x] **Milestone 5**: Preview Upload (Local preview storage, MIME signature validation, image serving, replacement & deletion, AssetCard & AssetDetail UI)
-- [x] **Milestone 6**: Asset Management UI (Add/edit/delete assets, tag auto-completion & creation, category assignment, native folder picker, safe deletion)
-- [x] **Milestone 7**: Library Quality of Life (Search across name/author/tags, multi-tag filter, sorting, favorites persistence & filtering, local file status filters, URL query persistence)
-- [ ] **Milestone 8**: Filesystem Scanner / Later Milestones (Deferred)
+- [x] **Milestone 3**: Asset grid UI (responsive card grid, dynamic categories, search, empty/loading/error states)
+- [x] **Milestone 4**: Asset details (detail page, local file existence check, OS folder launcher, edit/delete)
+- [x] **Milestone 5**: Preview upload (local preview storage, MIME signature validation, serving, replacement & deletion)
+- [x] **Milestone 6**: Search + tags (tag creation/assignment, search across name/author/description/tags, category & multi-tag filters)
+  - Extras done early from the future roadmap: favorites, sorting, has-preview / has-BOOTH / local-status filters, URL query persistence, library stats
+- [x] **Milestone 6.5**: Cleanup (edit no longer wipes preview, lint clean, sidebar counts use unfiltered stats)
+- [ ] **Milestone 7**: Data model v2 (category tree, asset files & versions, avatar compatibility, draft status)
+- [ ] **Milestone 8**: Filesystem scanner + review screen
+- [ ] **Milestone 9**: BOOTH metadata import
+- [ ] **Milestone 10**: UI refresh

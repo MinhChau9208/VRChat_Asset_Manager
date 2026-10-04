@@ -484,7 +484,7 @@ func (r *Repository) Update(ctx context.Context, id int64, req UpdateAssetReques
 
 	updateQuery := `
 		UPDATE assets 
-		SET name = ?, category_id = ?, author = ?, booth_url = ?, local_path = ?, preview_path = ?, description = ?,
+		SET name = ?, category_id = ?, author = ?, booth_url = ?, local_path = ?, preview_path = COALESCE(?, preview_path), description = ?,
 		    is_favorite = COALESCE(?, is_favorite),
 		    updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?
@@ -679,3 +679,32 @@ func (r *Repository) BatchStatus(ctx context.Context, ids []int64) (map[string]b
 	return result, nil
 }
 
+// Stats returns unfiltered asset counts for the library sidebar.
+func (r *Repository) Stats(ctx context.Context) (*LibraryStats, error) {
+	stats := &LibraryStats{ByCategory: map[string]int{}}
+
+	err := r.db.QueryRowContext(ctx,
+		"SELECT COUNT(*), COALESCE(SUM(is_favorite), 0) FROM assets",
+	).Scan(&stats.Total, &stats.Favorites)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count assets: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx,
+		"SELECT category_id, COUNT(*) FROM assets WHERE category_id IS NOT NULL GROUP BY category_id",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count assets by category: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var catID int64
+		var count int
+		if err := rows.Scan(&catID, &count); err != nil {
+			return nil, fmt.Errorf("failed to scan category count: %w", err)
+		}
+		stats.ByCategory[strconv.FormatInt(catID, 10)] = count
+	}
+	return stats, rows.Err()
+}

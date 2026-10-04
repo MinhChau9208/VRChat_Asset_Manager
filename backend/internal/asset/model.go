@@ -52,13 +52,15 @@ type CreateAssetRequest struct {
 }
 
 // UpdateAssetRequest represents the incoming JSON body when updating an asset.
+// PreviewPath is a pointer so that omitting it keeps the existing preview
+// (previews are normally managed through the /preview endpoints).
 type UpdateAssetRequest struct {
 	Name        string   `json:"name"`
 	CategoryID  *int64   `json:"category_id"`
 	Author      string   `json:"author"`
 	BoothURL    string   `json:"booth_url"`
 	LocalPath   string   `json:"local_path"`
-	PreviewPath string   `json:"preview_path"`
+	PreviewPath *string  `json:"preview_path"`
 	Description string   `json:"description"`
 	Tags        []string `json:"tags"`
 	IsFavorite  *bool    `json:"is_favorite"`
@@ -90,4 +92,11 @@ type BatchStatusRequest struct {
 // BatchStatusResponse represents the result of checking local file status for multiple assets.
 type BatchStatusResponse struct {
 	Statuses map[string]bool `json:"statuses"`
+}
+
+// LibraryStats summarizes the whole library, independent of any active filters.
+type LibraryStats struct {
+	Total      int            `json:"total"`
+	Favorites  int            `json:"favorites"`
+	ByCategory map[string]int `json:"by_category"` // category id -> asset count
 }

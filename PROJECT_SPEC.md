@@ -687,47 +687,162 @@ The library remains usable with hundreds of assets.
 
 ---
 
-## Milestone 7 — Filesystem scanner
+## Milestone 6.5 — Cleanup (done)
 
-Only after MVP works.
+- Editing an asset no longer wipes its preview (`preview_path` is optional on update)
+- Frontend lint clean
+- Sidebar counts come from `GET /api/stats` (unfiltered) instead of the filtered list
 
-Example:
+---
 
-    D:\VRChatAssets
+## Milestone 7 — Data model v2
 
-Click:
+The MVP (M0–M6) is done. Before scanning real folders, the data model must
+describe how assets actually exist on disk and how they relate to avatars.
 
-    [Scan Folder]
+### Category tree
 
-Possible result:
+Categories get an optional `parent_id` (two levels) and a `sort_order`.
+Categories can be created, renamed, reordered and deleted from the UI
+(`POST/PUT/DELETE /api/categories`).
 
-    Hair/
-       CuteHair/
-       LongHair/
+Default tree (child ← example user folder, BOOTH category):
 
-    Clothes/
-       GothicDress/
+    Avatar                ← Models        (3Dキャラクター)
+    Outfit
+       Clothes            ← Clothes       (3D衣装)
+       Shoes
+    Hair                  ← Hair
+    Accessory
+       Accessory          ← Accessory     (3D装飾品)
+       Ears & Tail        ← Ears
+    Face
+       Eyes               ← Eyes          (3Dテクスチャ)
+       Expression         ← Facials
+       Makeup             ← MakeUps
+    Gimmick
+       Gimmick            ← Gimmick
+       Prop               ← PianoGimick   (3D小道具)
+    Animation                             (3Dモーション・アニメーション)
+    Tool & Shader         ← community     (3Dツール・システム)
+    World                                 (3D環境・ワールド)
+    Audio                 ← Audio
+    Inbox                 ← UnOrganized, loose items at the library root
 
-The scanner can create draft assets.
+Existing categories are migrated into this tree; no asset loses its category.
 
-Important:
+### Asset files & versions
 
-Do not guess too much metadata.
+One asset can point to several files/folders on disk:
 
-A folder scanner should preferably create:
+    asset_files
+        id
+        asset_id
+        path            (unique)
+        kind            folder | archive | unitypackage
+        version         optional label, e.g. 1.2.0
+        created_at
 
-    name
-    local_path
-    category (if inferable)
+`assets.local_path` stays as the "primary" location for compatibility.
+Example: `Models/Kipfel_1.1.1`, `Models/Kipfel_1.2.0` and
+`Models/Kipfel_1.2.0.zip` are three files of one asset.
 
-and leave:
+### Avatar compatibility
 
-    booth_url
-    preview
-    tags
-    author
+    asset_compat
+        asset_id
+        avatar_asset_id   nullable, an owned asset in the Avatar category
+        avatar_name       used when the avatar is not owned (e.g. "Manuka")
 
-for manual completion unless reliable automation exists.
+An avatar's detail page lists everything compatible with it.
+
+### Draft status
+
+`assets.status`: `active` (default) | `draft`. Scanner-created assets start as
+drafts and are hidden from the main library until confirmed.
+
+Success condition:
+
+Existing data migrates cleanly; an asset can have several files and
+compatible avatars; categories are editable.
+
+---
+
+## Milestone 8 — Filesystem scanner
+
+Only after M7.
+
+Settings: one or more library roots (e.g. `N:\Unity Materials`), an ignore
+list (default includes `AvatarPass`, which may contain passwords — never read
+it), archive folder names (default `LEGACY`, `Legacy`, `Zips`), and a
+folder-name → category mapping.
+
+Rules:
+
+- Level 1 under a root = category folder (mapped, case-insensitive).
+  Loose items at the root go to Inbox.
+- Level 2 = one asset: a folder, or an archive (`.zip`, `.7z`,
+  `.unitypackage`) with no extracted folder.
+- Archives inside archive folders are attached to the matching extracted
+  folder, searching all archive folders (a zip may sit in another
+  category's LEGACY). Matching normalizes names: NFKC (＆ → &), case,
+  `_` / `-` / space as one separator, version suffix stripped.
+- Version suffixes (`_v1.2`, `ver1.02`, `Ver_1.3`, `1.1.1`) group folders of
+  the same asset into versions.
+- Mojibake Shift-JIS names (e.g. `ìRïcâfâé…`) get a decoded name suggestion.
+- BOOTH id candidates, in order of confidence:
+  1. 6–8 digit number in the folder/file name (e.g. `4460917 avatargimmick …`)
+  2. BOOTH links in `.url` / readme files inside the asset folder, excluding
+     known dependencies (lilToon, BlendShare, Modular Avatar…); links to
+     owned avatars become compatibility suggestions instead
+- Preview candidate: an image at the top of the asset folder (`main.png`).
+
+Every guess is a suggestion. The scanner creates drafts; a **Review screen**
+lists new drafts, already-linked paths and assets whose files went missing,
+and lets the user accept / edit / ignore, individually or in bulk.
+Re-scanning only reports changes (paths are unique).
+
+The scanner never moves, renames or deletes user files.
+
+Success condition:
+
+Scanning the real library produces one draft per asset (folder + zips +
+versions grouped), with category filled and BOOTH id where reliable.
+
+---
+
+## Milestone 9 — BOOTH metadata import
+
+On user action only (button "Fetch from BOOTH" in the form and Review screen):
+
+    GET https://booth.pm/ja/items/{id}.json
+
+Provides name, shop (→ author), category (→ category mapping), full-size
+images, tags, variations (often name the target avatar) and description (often
+a `対応アバター` section linking base avatars).
+
+- Suggestions are shown and confirmed by the user before saving.
+- The chosen image is downloaded into `data/previews/` (never hotlinked).
+- At most 1 request per second; responses are cached locally.
+- Adult items may require extra handling.
+
+Success condition:
+
+Paste a BOOTH URL → name, author, category, preview and compatibility are
+suggested and saved in a few clicks.
+
+---
+
+## Milestone 10 — UI refresh
+
+- shadcn/ui components and a consistent icon set (lucide) instead of emoji
+- Square preview cards (BOOTH images are 1:1), adjustable card size, list view
+- Category tree in the sidebar with counts
+- Detail as a drawer, keeping grid position
+- Preview in the create form: file picker, drag & drop, paste (Ctrl+V)
+- Bulk select → set category / tags / compatibility
+- Avatar page: everything compatible with an avatar
+- Larger minimum text size
 
 ---
 
@@ -1005,18 +1120,18 @@ That is the long-term direction.
 
 # 23. Immediate next action
 
-Do not start by building the full UI.
+Milestones 0–6.5 are done (see README "Milestone Status").
 
-Start with:
+Continue with:
 
-    Milestone 0
+    Milestone 7  (data model v2)
         ↓
-    Milestone 1
+    Milestone 8  (scanner + review)
         ↓
-    Milestone 2
+    Milestone 9  (BOOTH import)
         ↓
-    Milestone 3
+    Milestone 10 (UI refresh)
 
-Only after the basic application works should you add automation.
+One milestone at a time; every automated guess stays a suggestion the user confirms.
 
 This keeps the project small enough to finish while still leaving a clean path toward a full VRChat asset library.

@@ -724,12 +724,19 @@ Default tree (child ← example user folder, BOOTH category):
        Gimmick            ← Gimmick
        Prop               ← PianoGimick   (3D小道具)
     Animation                             (3Dモーション・アニメーション)
+    Texture & Material                    (3Dテクスチャ, 3Dマテリアル)
     Tool & Shader         ← community     (3Dツール・システム)
     World                                 (3D環境・ワールド)
     Audio                 ← Audio
-    Inbox                 ← UnOrganized, loose items at the library root
+    Other                 ← UnOrganized, loose items at the library root
 
-Existing categories are migrated into this tree; no asset loses its category.
+Assets can sit on a parent ("Outfit") or a child ("Clothes"); filtering by a
+parent includes its children. Names are unique across the tree.
+
+Existing categories are migrated into this tree; no asset loses its category
+(Texture → Texture & Material, Shader → Tool & Shader, Material merged into
+Texture & Material). The backend backs up `app.db` to `data/backups/` before
+applying any new migration.
 
 ### Asset files & versions
 

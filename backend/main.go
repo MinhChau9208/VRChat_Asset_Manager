@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"vrchat-asset-manager/backend/internal/asset"
+	"vrchat-asset-manager/backend/internal/booth"
 	"vrchat-asset-manager/backend/internal/category"
 	"vrchat-asset-manager/backend/internal/database"
 	"vrchat-asset-manager/backend/internal/scanner"
@@ -180,6 +181,9 @@ func main() {
 
 	// Filesystem scanner routes
 	scanner.NewHandler(scanner.NewService(db.DB, assetRepo, previewsDir)).RegisterRoutes(mux)
+
+	// BOOTH metadata import routes (network access only on user action)
+	booth.NewHandler(booth.NewService(db.DB, booth.NewClient(db.DB), assetRepo, previewsDir)).RegisterRoutes(mux)
 
 	handler := corsMiddleware(mux)
 

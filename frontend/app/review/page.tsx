@@ -8,6 +8,9 @@ import {
   ScanResult,
   ScannerConfig,
   acceptDrafts,
+  applyBooth,
+  BoothApplyResult,
+  boothSearchUrl,
   assetUpdatePayload,
   buildCategoryTree,
   getAssetByID,
@@ -71,6 +74,7 @@ export default function ReviewPage() {
   const [showIgnored, setShowIgnored] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [boothResults, setBoothResults] = useState<BoothApplyResult[] | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -162,6 +166,19 @@ export default function ReviewPage() {
         if (d) await updateAsset(id, assetUpdatePayload(d, { category_id: categoryId }));
       }
     });
+
+  // Fills drafts from BOOTH (one request per second, so this can take a moment).
+  const handleFetchBooth = (ids: number[]) => {
+    const withLink = ids.filter((id) => drafts.find((d) => d.id === id)?.booth_url);
+    if (withLink.length === 0) {
+      setError("None of the selected drafts has a BOOTH link yet.");
+      return;
+    }
+    run(async () => {
+      const { results } = await applyBooth(withLink);
+      setBoothResults(results);
+    });
+  };
 
   const setBooth = (d: Asset, url: string) => run(() => updateAsset(d.id, assetUpdatePayload(d, { booth_url: url })));
 
@@ -265,6 +282,33 @@ export default function ReviewPage() {
           </section>
         )}
 
+        {boothResults && (
+          <section className="p-4 rounded-xl bg-neutral-900/60 border border-red-900/40 text-xs space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-300">
+                BOOTH: <b className="text-white">{boothResults.filter((r) => r.ok).length}</b> updated
+                {boothResults.some((r) => !r.ok) && (
+                  <>
+                    , <b className="text-rose-300">{boothResults.filter((r) => !r.ok).length}</b> failed
+                  </>
+                )}
+              </span>
+              <button type="button" onClick={() => setBoothResults(null)} className="text-neutral-500 hover:text-neutral-200 cursor-pointer">
+                ✕
+              </button>
+            </div>
+            <ul className="space-y-0.5 text-[11px]">
+              {boothResults.map((r) => (
+                <li key={r.asset_id} className={r.ok ? "text-neutral-400" : "text-rose-300"}>
+                  {r.ok ? "✓" : "✕"} {r.name}
+                  {r.ok && r.changed && r.changed.length > 0 && <span className="text-neutral-500"> · {r.changed.join(", ")}</span>}
+                  {r.error && <span> · {r.error}</span>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {missingCount > 0 && (
           <Link
             href="/?local_status=missing"
@@ -296,6 +340,15 @@ export default function ReviewPage() {
                 className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
               >
                 ✓ Accept selected
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFetchBooth(selectedIds)}
+                disabled={busy}
+                className="px-3 py-1.5 rounded-lg bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+                title="Fill name, author, empty category, preview and compatible avatars from BOOTH"
+              >
+                {busy ? "Working…" : "🛒 Fetch BOOTH info"}
               </button>
               <button
                 type="button"
@@ -387,7 +440,26 @@ export default function ReviewPage() {
                           {info?.booth_source && <span className="text-red-400/70"> · {info.booth_source}</span>}
                         </a>
                       ) : (
-                        <span className="text-neutral-500">No BOOTH link found</span>
+                        <a
+                          href={boothSearchUrl(d.name)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-neutral-500 hover:text-red-300"
+                          title="Open a BOOTH search for this name, then paste the item URL via Edit"
+                        >
+                          No BOOTH link · search on BOOTH ↗
+                        </a>
+                      )}
+                      {d.booth_url && (
+                        <button
+                          type="button"
+                          onClick={() => handleFetchBooth([d.id])}
+                          disabled={busy}
+                          className="px-1.5 py-0.5 rounded bg-neutral-800 text-red-200 border border-red-900/60 hover:border-red-600 cursor-pointer disabled:opacity-50"
+                          title="Fill name, author, empty category, preview and compatible avatars from BOOTH"
+                        >
+                          ⤓ fetch info
+                        </button>
                       )}
                       {otherCandidates.map((c) => (
                         <button

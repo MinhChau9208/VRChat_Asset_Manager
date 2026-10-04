@@ -14,8 +14,12 @@ import {
   updateAsset,
   pickFolder,
   buildCategoryTree,
+  BoothSuggestion,
+  lookupBooth,
+  setPreviewFromBooth,
 } from "@/lib/api";
 import { CompatibleAvatarsInput } from "./CompatibleAvatarsInput";
+import { BoothImportPanel, BoothSelection } from "./BoothImportPanel";
 
 interface AssetFormProps {
   initialData?: Asset;
@@ -46,6 +50,12 @@ export const AssetForm: React.FC<AssetFormProps> = ({
 
   // Tag input state
   const [tagInput, setTagInput] = useState("");
+
+  // BOOTH import state; the chosen image is downloaded after the asset is saved.
+  const [boothSuggestion, setBoothSuggestion] = useState<BoothSuggestion | null>(null);
+  const [isFetchingBooth, setIsFetchingBooth] = useState(false);
+  const [boothError, setBoothError] = useState<string | null>(null);
+  const [pendingPreviewUrl, setPendingPreviewUrl] = useState<string | null>(null);
 
   // Data loading states
   const [categories, setCategories] = useState<Category[]>([]);
@@ -90,6 +100,36 @@ export const AssetForm: React.FC<AssetFormProps> = ({
       isMounted = false;
     };
   }, []);
+
+  const handleFetchBooth = async () => {
+    setIsFetchingBooth(true);
+    setBoothError(null);
+    try {
+      setBoothSuggestion(await lookupBooth(boothUrl.trim()));
+    } catch (err) {
+      setBoothError(err instanceof Error ? err.message : "BOOTH lookup failed");
+    } finally {
+      setIsFetchingBooth(false);
+    }
+  };
+
+  const handleApplyBooth = (sel: BoothSelection) => {
+    if (boothSuggestion) setBoothUrl(boothSuggestion.booth_url);
+    if (sel.name) setName(sel.name);
+    if (sel.author) setAuthor(sel.author);
+    if (sel.categoryId !== undefined) setCategoryId(sel.categoryId);
+    if (sel.tags.length > 0) {
+      setTags((prev) => [...prev, ...sel.tags.filter((t) => !prev.some((p) => p.toLowerCase() === t.toLowerCase()))]);
+    }
+    setCompatibleAvatars((prev) => [
+      ...prev,
+      ...sel.compatibleAvatars.filter(
+        (c) => !prev.some((p) => p.avatar_name.toLowerCase() === c.avatar_name.toLowerCase())
+      ),
+    ]);
+    setPendingPreviewUrl(sel.imageUrl ?? null);
+    setBoothSuggestion(null);
+  };
 
   // Immediate validation check
   const validate = (): boolean => {
@@ -199,6 +239,15 @@ export const AssetForm: React.FC<AssetFormProps> = ({
           throw new Error("Missing asset ID for update");
         }
         result = await updateAsset(initialData.id, payload);
+      }
+
+      if (pendingPreviewUrl) {
+        try {
+          result = await setPreviewFromBooth(result.id, pendingPreviewUrl);
+        } catch (previewErr) {
+          // The asset is saved; only the preview download failed.
+          console.warn("Failed to download BOOTH preview:", previewErr);
+        }
       }
 
       onSubmitSuccess(result);
@@ -347,6 +396,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
           >
             BOOTH URL
           </label>
+          <div className="flex gap-2">
           <input
             id="asset-booth-url"
             type="url"
@@ -364,8 +414,31 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                 : "border-neutral-800 focus:border-cyan-500 focus:ring-cyan-500"
             }`}
           />
+          <button
+            type="button"
+            onClick={handleFetchBooth}
+            disabled={!boothUrl.trim() || isFetchingBooth}
+            className="px-3 py-2 rounded-lg bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold border border-red-700/60 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Fill name, author, category, preview and compatible avatars from BOOTH"
+          >
+            {isFetchingBooth ? "Fetching…" : "Fetch from BOOTH"}
+          </button>
+          </div>
           {fieldErrors.boothUrl && (
             <p className="mt-1 text-xs text-rose-400">{fieldErrors.boothUrl}</p>
+          )}
+          {boothError && <p className="mt-1 text-xs text-rose-400">{boothError}</p>}
+          {pendingPreviewUrl && !boothSuggestion && (
+            <p className="mt-1 text-[11px] text-emerald-400">
+              BOOTH image selected — it will become the preview when you save.
+            </p>
+          )}
+          {boothSuggestion && (
+            <BoothImportPanel
+              suggestion={boothSuggestion}
+              onApply={handleApplyBooth}
+              onClose={() => setBoothSuggestion(null)}
+            />
           )}
         </div>
 

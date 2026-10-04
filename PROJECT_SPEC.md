@@ -834,6 +834,12 @@ a `対応アバター` section linking base avatars).
 - The chosen image is downloaded into `data/previews/` (never hotlinked).
 - At most 1 request per second; responses are cached locally.
 - Adult items may require extra handling.
+- BOOTH's own category is mapped (3Dキャラクター → Avatar, 3D衣装 → Clothes,
+  3D髪型 → Hair, 3D装飾品 → Accessory, 3D小道具 → Prop, 3Dテクスチャ →
+  Texture & Material, …) and refined by keywords (ヘア → Hair, 瞳 → Eyes,
+  ギミック → Gimmick).
+- Bulk apply on drafts only fills empty author / category / preview and merges
+  compatible avatars; the name is replaced by the BOOTH name.
 
 Success condition:
 

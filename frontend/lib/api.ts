@@ -698,3 +698,55 @@ export function assetUpdatePayload(asset: Asset, changes: Partial<UpdateAssetInp
     ...changes,
   };
 }
+
+// ---- BOOTH import (Milestone 9) ----
+
+export interface BoothSuggestion {
+  item_id: string;
+  name: string;
+  author: string;
+  booth_url: string;
+  category_id: number | null;
+  category_name: string;
+  booth_category: string;
+  tags: string[];
+  compatible_avatars: CompatAvatar[];
+  images: string[];
+  is_adult: boolean;
+  price: string;
+}
+
+export interface BoothApplyResult {
+  asset_id: number;
+  name: string;
+  ok: boolean;
+  error?: string;
+  changed?: string[];
+}
+
+/** Fetch a BOOTH item (cached for a week unless refresh) and get suggestions. */
+export async function lookupBooth(urlOrId: string, refresh = false): Promise<BoothSuggestion> {
+  const params = new URLSearchParams({ url: urlOrId });
+  if (refresh) params.set("refresh", "1");
+  const res = await fetch(`${getApiBaseUrl()}/api/booth/lookup?${params}`, { cache: "no-store" });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${res.status}: BOOTH lookup failed`);
+  }
+  return res.json();
+}
+
+/** Download a BOOTH image and make it the asset's preview. */
+export function setPreviewFromBooth(assetId: number | string, imageUrl: string): Promise<Asset> {
+  return sendJSON("POST", "/api/booth/preview", { asset_id: Number(assetId), url: imageUrl }, "Failed to set preview");
+}
+
+/** Fill assets from their BOOTH links (name, empty author/category, compat, missing preview). */
+export function applyBooth(assetIds: number[], includeTags = false): Promise<{ results: BoothApplyResult[] }> {
+  return sendJSON("POST", "/api/booth/apply", { asset_ids: assetIds, include_tags: includeTags }, "BOOTH import failed");
+}
+
+/** BOOTH search page for an asset name, for drafts without a link. */
+export function boothSearchUrl(name: string): string {
+  return `https://booth.pm/ja/search/${encodeURIComponent(name)}`;
+}

@@ -12,6 +12,7 @@ import {
   deleteAssetPreview,
   deleteAsset,
   toggleAssetFavorite,
+  acceptDrafts,
   Asset,
   AssetStatus,
 } from "@/lib/api";
@@ -445,6 +446,35 @@ function AssetDetailView({ id }: { id: string }) {
             </span>
           </div>
         </div>
+
+        {/* Draft banner: scanner-created assets wait for confirmation */}
+        {asset.status === "draft" && !isEditing && (
+          <div className="mb-4 flex flex-wrap items-center gap-3 p-3 rounded-xl bg-amber-950/30 border border-amber-800/50 text-xs text-amber-200">
+            <span className="flex-1">
+              📝 This is a draft created by the scanner. It is hidden from the library until you accept it.
+            </span>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await acceptDrafts([asset.id]);
+                  setAsset({ ...asset, status: "active" });
+                } catch (err) {
+                  setActionFeedback({
+                    type: "error",
+                    message: err instanceof Error ? err.message : "Failed to accept draft",
+                  });
+                }
+              }}
+              className="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-semibold cursor-pointer"
+            >
+              ✓ Accept
+            </button>
+            <Link href="/review" className="text-amber-300 hover:text-amber-100 underline underline-offset-2">
+              Back to review
+            </Link>
+          </div>
+        )}
 
         {/* Action Feedback Banner (Success or Error) */}
         {actionFeedback && (

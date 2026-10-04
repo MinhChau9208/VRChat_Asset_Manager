@@ -3,6 +3,7 @@ package asset
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -169,7 +170,7 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*Asset, error) {
 		SELECT 
 			a.id, a.name, a.category_id, c.name,
 			a.author, a.booth_url, a.local_path, a.preview_path, a.description,
-			a.is_favorite, a.status,
+			a.is_favorite, a.status, a.scan_info,
 			a.created_at, a.updated_at
 		FROM assets a
 		LEFT JOIN categories c ON a.category_id = c.id
@@ -177,6 +178,7 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*Asset, error) {
 	`
 	var a Asset
 	var catName sql.NullString
+	var scanInfo string
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&a.ID,
@@ -190,6 +192,7 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*Asset, error) {
 		&a.Description,
 		&a.IsFavorite,
 		&a.Status,
+		&scanInfo,
 		&a.CreatedAt,
 		&a.UpdatedAt,
 	)
@@ -198,6 +201,9 @@ func (r *Repository) GetByID(ctx context.Context, id int64) (*Asset, error) {
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to query asset: %w", err)
+	}
+	if scanInfo != "" {
+		a.ScanInfo = json.RawMessage(scanInfo)
 	}
 
 	if a.LocalPath != "" {
@@ -368,7 +374,7 @@ func (r *Repository) List(ctx context.Context, filters FilterParams) ([]Asset, e
 		SELECT 
 			a.id, a.name, a.category_id, c.name,
 			a.author, a.booth_url, a.local_path, a.preview_path, a.description,
-			a.is_favorite, a.status,
+			a.is_favorite, a.status, a.scan_info,
 			a.created_at, a.updated_at
 		FROM assets a
 		LEFT JOIN categories c ON a.category_id = c.id
@@ -389,6 +395,7 @@ func (r *Repository) List(ctx context.Context, filters FilterParams) ([]Asset, e
 	for rows.Next() {
 		var a Asset
 		var catName sql.NullString
+		var scanInfo string
 
 		err := rows.Scan(
 			&a.ID,
@@ -402,11 +409,15 @@ func (r *Repository) List(ctx context.Context, filters FilterParams) ([]Asset, e
 			&a.Description,
 			&a.IsFavorite,
 			&a.Status,
+			&scanInfo,
 			&a.CreatedAt,
 			&a.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan asset row: %w", err)
+		}
+		if scanInfo != "" {
+			a.ScanInfo = json.RawMessage(scanInfo)
 		}
 
 		if a.CategoryID != nil && catName.Valid {
@@ -748,9 +759,13 @@ func (r *Repository) BatchStatus(ctx context.Context, ids []int64) (map[string]b
 func (r *Repository) Stats(ctx context.Context) (*LibraryStats, error) {
 	stats := &LibraryStats{ByCategory: map[string]int{}}
 
-	err := r.db.QueryRowContext(ctx,
-		"SELECT COUNT(*), COALESCE(SUM(is_favorite), 0) FROM assets WHERE status = 'active'",
-	).Scan(&stats.Total, &stats.Favorites)
+	err := r.db.QueryRowContext(ctx, `
+		SELECT
+			COALESCE(SUM(status = 'active'), 0),
+			COALESCE(SUM(status = 'active' AND is_favorite), 0),
+			COALESCE(SUM(status = 'draft'), 0)
+		FROM assets`,
+	).Scan(&stats.Total, &stats.Favorites, &stats.Drafts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to count assets: %w", err)
 	}

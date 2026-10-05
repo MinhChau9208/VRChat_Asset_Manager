@@ -24,6 +24,8 @@ interface AssetGridProps {
   selectable?: boolean;
   selectedIds?: Set<number>;
   onToggleSelect?: (asset: Asset) => void;
+  /** Replaces the plain "No assets yet" state when the library is empty. */
+  welcome?: React.ReactNode;
 }
 
 // Minimum card width per size; columns fill the available space.
@@ -92,6 +94,7 @@ export const AssetGrid: React.FC<AssetGridProps> = ({
   selectable = false,
   selectedIds,
   onToggleSelect,
+  welcome,
 }) => {
   if (error) {
     return (
@@ -177,6 +180,7 @@ export const AssetGrid: React.FC<AssetGridProps> = ({
         />
       );
     }
+    if (welcome) return <>{welcome}</>;
     return (
       <EmptyState
         icon={Sparkles}

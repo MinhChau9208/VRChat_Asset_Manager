@@ -901,15 +901,21 @@ Build:
 - `scripts/build-release.ps1` → `dist/VRChatAssetManager-<version>.zip`
 - Version shown in the startup banner and `GET /health`
 
-### Phase 2 — Later
+### Phase 2 — Desktop polish (done)
 
-- Tray icon (Open / Open data folder / Quit), hidden console, log file
-- First-run welcome: choose library root → Scan → Review
-- "New version available" notice from GitHub Releases (notify only, no auto-update)
-- GitHub Actions release on tag; optional Inno Setup installer
-  (data then moves to `%LOCALAPPDATA%\VRChatAssetManager`)
-- Replace the PowerShell folder picker with a native dialog call
-  (fewer antivirus false positives)
+- Tray icon (click: open; menu: Open / Open data folder / Quit), no console
+  window (`-H windowsgui`), log in `data/logs/app.log`, errors in a message box
+- App icon and version details in the exe (`scripts/icon/`, go-winres)
+- Native Windows folder picker (`IFileOpenDialog`) instead of PowerShell
+- First-run welcome on an empty library: pick folder → Scan → Review
+- `GET /api/version` + "Update x.y.z" button when GitHub has a newer release.
+  Only builds with a release version check (never `dev` or a commit hash),
+  at most every 6 hours; it only links to the release page
+- GitHub Actions: pushing a `v*` tag builds the zip and publishes a Release
+
+Not done (only if needed): Inno Setup installer. With an installer the data
+would move to `%LOCALAPPDATA%\VRChatAssetManager`, since Program Files is
+read-only.
 
 Success condition:
 

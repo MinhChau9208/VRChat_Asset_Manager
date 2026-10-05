@@ -16,6 +16,8 @@ if (-not $Version) {
     $Version = git -C $root describe --tags --always --dirty
     if (-not $Version) { $Version = "dev" }
 }
+# Tag v1.2.0 -> version 1.2.0
+if ($Version -match '^v\d') { $Version = $Version.Substring(1) }
 Write-Host "Building VRChat Asset Manager $Version" -ForegroundColor Cyan
 
 # 1. Frontend -> static export (frontend\out), API on the same origin.

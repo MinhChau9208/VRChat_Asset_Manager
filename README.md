@@ -123,8 +123,12 @@ terminal needed. The `README.txt` inside the zip covers the rest.
 To make that zip yourself (needs Go and Node.js):
 
 ```powershell
-.\scripts\build-release.ps1            # -> dist\VRChatAssetManager-<version>.zip
+.\scripts\build-release.ps1 -Version 1.0.0   # -> dist\VRChatAssetManager-1.0.0.zip
 ```
+
+Or let GitHub do it: pushing a tag such as `v1.0.0` runs
+[.github/workflows/release.yml](.github/workflows/release.yml), which publishes a Release with the zip.
+Running apps show an "Update" button when a newer release exists.
 
 The rest of this section is for running from source.
 
@@ -227,9 +231,7 @@ The REST API is documented in [docs/API.md](docs/API.md). Design decisions and t
 
 Done: asset CRUD, previews, search and tags, category tree, files & versions, avatar compatibility,
 folder scanner with review, BOOTH import, refreshed UI with drawer, bulk edit, avatar pages and themes,
-a portable one-file release for non-developers.
-
-Next for the release: tray icon, first-run welcome, "new version available" notice, installer.
+and a portable one-file release for non-developers (tray app, first-run welcome, update notice).
 
 Ideas for later:
 

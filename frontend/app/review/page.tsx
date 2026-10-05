@@ -353,7 +353,7 @@ export default function ReviewPage() {
                 type="button"
                 onClick={() => handleFetchBooth(selectedIds)}
                 disabled={busy}
-                className="px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 rounded-lg bg-red-600 dark:bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
                 title={t.review.fetchTitle}
               >
                 <ShoppingBag className="size-4" /> {busy ? t.review.working : t.review.fetchBooth}

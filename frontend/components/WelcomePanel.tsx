@@ -7,6 +7,7 @@ import { FolderOpen, Loader2, Plus, ScanSearch, Sparkles } from "lucide-react";
 import { getScannerConfig, pickFolder, runScan, saveScannerConfig } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Shown instead of the empty grid while the library has no assets: leads a
@@ -17,20 +18,21 @@ export function WelcomePanel({ draftCount }: { draftCount: number }) {
   const [folder, setFolder] = useState("");
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   // A scan already ran; the drafts only need confirming.
   if (draftCount > 0) {
     return (
       <Panel>
         <h2 className="text-xl font-semibold">
-          {draftCount} {draftCount === 1 ? "asset is" : "assets are"} waiting for review
+          {t.welcome.waiting(draftCount)}
         </h2>
         <p className="max-w-lg text-sm text-muted-foreground">
-          The scanner found them in your folders. Check names and categories, then accept them into your library.
+          {t.welcome.waitingText}
         </p>
         <Button asChild>
           <Link href="/review">
-            <ScanSearch /> Open Scan &amp; Review
+            <ScanSearch /> {t.welcome.openReview}
           </Link>
         </Button>
       </Panel>
@@ -55,18 +57,15 @@ export function WelcomePanel({ draftCount }: { draftCount: number }) {
       await runScan();
       router.push("/review");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Scan failed");
+      setError(err instanceof Error ? err.message : t.welcome.scanFailed);
       setScanning(false);
     }
   };
 
   return (
     <Panel>
-      <h2 className="text-xl font-semibold">Welcome to VRChat Asset Manager</h2>
-      <p className="max-w-lg text-sm text-muted-foreground">
-        Start with the assets you already have. Pick the folder where you keep your VRChat downloads, usually the one
-        with folders such as <i>Avatars</i>, <i>Hair</i> or <i>Clothes</i> inside.
-      </p>
+      <h2 className="text-xl font-semibold">{t.welcome.title}</h2>
+      <p className="max-w-lg text-sm text-muted-foreground">{t.welcome.intro}</p>
 
       <form
         className="flex w-full max-w-xl flex-col gap-2 sm:flex-row"
@@ -79,28 +78,26 @@ export function WelcomePanel({ draftCount }: { draftCount: number }) {
           value={folder}
           onChange={(e) => setFolder(e.target.value)}
           placeholder="D:\VRChat Assets"
-          aria-label="Asset folder"
+          aria-label={t.welcome.folder}
           className="font-mono text-sm"
           disabled={scanning}
         />
         <Button type="button" variant="outline" onClick={browse} disabled={scanning}>
-          <FolderOpen /> Browse…
+          <FolderOpen /> {t.welcome.browse}
         </Button>
         <Button type="submit" disabled={scanning || !folder.trim()}>
           {scanning ? <Loader2 className="animate-spin" /> : <ScanSearch />}
-          {scanning ? "Scanning…" : "Scan"}
+          {scanning ? t.welcome.scanning : t.welcome.scan}
         </Button>
       </form>
       {error && <p className="max-w-xl text-sm text-destructive">{error}</p>}
 
-      <p className="max-w-lg text-xs text-muted-foreground">
-        Nothing on your disk is moved, renamed or deleted. Every asset found becomes a draft that you confirm in Review.
-      </p>
+      <p className="max-w-lg text-xs text-muted-foreground">{t.welcome.safe}</p>
 
       <div className="text-sm text-muted-foreground">
-        or{" "}
+        {t.welcome.or}{" "}
         <Link href="/assets/new" className="inline-flex items-center gap-1 text-primary hover:underline">
-          <Plus className="size-3.5" /> add an asset by hand
+          <Plus className="size-3.5" /> {t.welcome.addByHand}
         </Link>
       </div>
     </Panel>

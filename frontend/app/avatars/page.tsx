@@ -10,11 +10,15 @@ import { AssetCard, assetPreviewSrc } from "@/components/AssetCard";
 import { AssetDetail } from "@/components/AssetDetail";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useI18n } from "@/lib/i18n";
 
 interface Group {
   name: string;
   assets: Asset[];
 }
+
+// Group key for assets without a category (translated when shown).
+const UNCATEGORIZED = "";
 
 /** Groups assets by top-level category, in the sidebar's order. */
 function groupByCategory(assets: Asset[], categories: Category[]): Group[] {
@@ -27,10 +31,10 @@ function groupByCategory(assets: Asset[], categories: Category[]): Group[] {
   const groups = new Map<string, Asset[]>();
   for (const a of assets) {
     const root = a.category_id !== null ? rootOf.get(a.category_id) : undefined;
-    const key = root?.name ?? "Uncategorized";
+    const key = root?.name ?? UNCATEGORIZED;
     groups.set(key, [...(groups.get(key) ?? []), a]);
   }
-  const order = [...tree.map((r) => r.name), "Uncategorized"];
+  const order = [...tree.map((r) => r.name), UNCATEGORIZED];
   return order.filter((name) => groups.has(name)).map((name) => ({ name, assets: groups.get(name)! }));
 }
 
@@ -54,6 +58,7 @@ function AvatarView({ id }: { id: number }) {
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [openId, setOpenId] = useState<number | null>(null);
+  const { t, categoryName } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -65,12 +70,12 @@ function AvatarView({ id }: { id: number }) {
         setCategories(cats);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load avatar");
+        if (!cancelled) setError(err instanceof Error ? err.message : t.avatar.loadFailed);
       });
     return () => {
       cancelled = true;
     };
-  }, [id, reloadToken]);
+  }, [id, reloadToken, t]);
 
   const toggleFavorite = async (assetId: number, next: boolean) => {
     setItems((prev) => prev.map((a) => (a.id === assetId ? { ...a, is_favorite: next } : a)));
@@ -86,7 +91,7 @@ function AvatarView({ id }: { id: number }) {
       <main className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-sm text-muted-foreground">{error}</p>
         <Button asChild variant="secondary" size="sm">
-          <Link href="/">Back to library</Link>
+          <Link href="/">{t.common.backToLibrary}</Link>
         </Button>
       </main>
     );
@@ -99,7 +104,7 @@ function AvatarView({ id }: { id: number }) {
     <main className="min-h-screen p-4 sm:p-6 md:p-8">
       <div className="mx-auto max-w-6xl space-y-8">
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary">
-          <ArrowLeft className="size-4" /> Library
+          <ArrowLeft className="size-4" /> {t.common.library}
         </Link>
 
         {/* Hero */}
@@ -116,17 +121,17 @@ function AvatarView({ id }: { id: number }) {
           </div>
           <div className="min-w-0 flex-1 space-y-3">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-violet-700 dark:text-violet-300/80">Avatar</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-violet-700 dark:text-violet-300/80">{t.avatar.label}</p>
               <h1 className="text-2xl font-semibold leading-tight sm:text-3xl">{avatar?.name ?? "…"}</h1>
-              {avatar?.author && <p className="mt-1 text-sm text-muted-foreground">by {avatar.author}</p>}
+              {avatar?.author && <p className="mt-1 text-sm text-muted-foreground">{t.common.by(avatar.author)}</p>}
             </div>
             <p className="text-sm text-muted-foreground">
-              {avatar ? `${items.length} compatible ${items.length === 1 ? "asset" : "assets"} in your library` : "Loading…"}
+              {avatar ? t.avatar.compatibleCount(items.length) : t.common.loading}
             </p>
             {avatar && (
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={() => setOpenId(avatar.id)}>
-                  <Pencil /> Details
+                  <Pencil /> {t.avatar.details}
                 </Button>
                 {avatar.booth_url && (
                   <Button asChild size="sm" className="bg-red-700 text-white hover:bg-red-600">
@@ -145,20 +150,17 @@ function AvatarView({ id }: { id: number }) {
           <div className="flex items-start gap-3 rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
             <Info className="mt-0.5 size-4 shrink-0" />
             <div className="space-y-1">
-              <p className="text-foreground">Nothing is marked as compatible with this avatar yet.</p>
-              <p>
-                In the library, use <b>Select</b> → <b>Compatible with…</b> to mark several assets at once, or
-                <b> Fetch from BOOTH</b> on an asset to pick up the avatars its page lists.
-              </p>
+              <p className="text-foreground">{t.avatar.nothing}</p>
+              <p>{t.avatar.howTo}</p>
             </div>
           </div>
         )}
 
         {groups.map((group) => (
-          <section key={group.name}>
+          <section key={group.name || "uncategorized"}>
             <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
               <CategoryIcon name={group.name} className="size-5 text-muted-foreground" />
-              {group.name}
+              {group.name ? categoryName(group.name) : t.common.uncategorized}
               <span className="text-sm font-normal text-muted-foreground">{group.assets.length}</span>
             </h2>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-4">
@@ -181,7 +183,7 @@ function AvatarView({ id }: { id: number }) {
       >
         <SheetContent side="right" className="overflow-y-auto p-5 data-[side=right]:w-full data-[side=right]:sm:max-w-2xl sm:p-6">
           <SheetHeader className="sr-only">
-            <SheetTitle>Asset details</SheetTitle>
+            <SheetTitle>{t.common.assetDetails}</SheetTitle>
           </SheetHeader>
           {openId !== null && (
             <AssetDetail

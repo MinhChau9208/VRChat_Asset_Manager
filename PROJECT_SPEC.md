@@ -924,6 +924,29 @@ double-clicking `VRChatAssetManager.exe` opens a working library in the browser.
 
 ---
 
+## Milestone 12 — Japanese interface (done)
+
+Most VRChat asset creators and many users are Japanese; the UI should be usable
+without English.
+
+- English and Japanese, no i18n dependency: `frontend/lib/messages/en.tsx`
+  defines every UI string (functions for counts and names); `ja.tsx` has the
+  same keys, checked by TypeScript. Components read them with `useI18n()`.
+- The first language comes from the browser (`ja*` → Japanese); the language
+  button in the header switches it and is remembered per browser.
+- Category names stay English in the database (the code relies on "Avatar").
+  Default categories are translated for display only (アバター, 衣装, 髪型…);
+  renamed and custom categories show as typed. The category page shows the
+  stored name next to the translation.
+- Tray menu and folder-picker title follow the Windows display language.
+- The release zip ships `README_ja.txt`.
+- Not translated: error messages from the backend API (rare, technical).
+
+To add a language: copy `ja.tsx`, translate, add it to `LOCALES` in
+`lib/i18n.tsx`.
+
+---
+
 # 16. Future roadmap
 
 Potential features:
@@ -1200,7 +1223,7 @@ That is the long-term direction.
 
 Milestones 0–10 are done (see README "Milestone Status").
 
-Current: Milestone 11 — packaging for non-developers (phase 1).
+Milestones 11 (packaging) and 12 (Japanese interface) are done.
 
 Candidates after that are in section 16 (Future roadmap): collections,
 duplicate detection, avatar builds, optional Google Drive backup.

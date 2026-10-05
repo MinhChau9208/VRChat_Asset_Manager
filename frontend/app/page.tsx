@@ -17,6 +17,7 @@ import { BulkActionBar } from "@/components/BulkActionBar";
 import { CardSize, ViewMode } from "@/components/AssetCard";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useLocalStorage } from "@/lib/useLocalStorage";
+import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { Heart, UserRound, X } from "lucide-react";
 import {
@@ -44,6 +45,7 @@ function LibraryView() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { t, categoryName } = useI18n();
 
   // State
   const [categories, setCategories] = useState<Category[]>([]);
@@ -246,9 +248,9 @@ function LibraryView() {
         if (cancelled) return;
         setIsConnected(false);
         if (err instanceof Error) {
-          setError(err.message || "Failed to load assets from server");
+          setError(err.message || t.library.loadFailed);
         } else {
-          setError("Unknown error while communicating with backend");
+          setError(t.library.unknownError);
         }
       })
       .finally(() => {
@@ -258,7 +260,7 @@ function LibraryView() {
     return () => {
       cancelled = true;
     };
-  }, [filtersJson, requestKey]);
+  }, [filtersJson, requestKey, t]);
 
   // 5. Backend health check poll
   useEffect(() => {
@@ -359,10 +361,10 @@ function LibraryView() {
     setBulkBusy(true);
     try {
       const { updated } = await bulkUpdateAssets({ asset_ids: [...selectedIds], ...change });
-      toast.success(`${label} (${updated} asset${updated === 1 ? "" : "s"})`);
+      toast.success(t.library.bulkDone(label, updated));
       setReloadToken((t) => t + 1);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Bulk update failed");
+      toast.error(err instanceof Error ? err.message : t.library.bulkFailed);
     } finally {
       setBulkBusy(false);
     }
@@ -421,17 +423,17 @@ function LibraryView() {
           <div className="mb-3">
             <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
               {isFavoriteOnly && <Heart className="size-5 fill-rose-500 text-rose-500" />}
-              {isFavoriteOnly ? "Favorites" : selectedCategory === "all" ? "All Assets" : selectedCategory}
+              {isFavoriteOnly ? t.library.favorites : selectedCategory === "all" ? t.library.allAssets : categoryName(selectedCategory)}
             </h1>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span>
-                {isLoading ? "Loading…" : `${assets.length} ${assets.length === 1 ? "asset" : "assets"}`}
-                {debouncedSearch && !isLoading && <> matching “{debouncedSearch}”</>}
+                {isLoading ? t.common.loading : t.common.assets(assets.length)}
+                {debouncedSearch && !isLoading && t.library.matching(debouncedSearch)}
               </span>
               {compatibleWith && (
                 <span className="inline-flex items-center gap-1.5 rounded-md border border-violet-300 dark:border-violet-800/70 bg-violet-100 dark:bg-violet-950/40 px-2 py-0.5 text-xs text-violet-800 dark:text-violet-200">
-                  <UserRound className="size-3.5" /> Compatible with {compatibleWith.name}
-                  <button type="button" onClick={() => setCompatibleWith(null)} aria-label="Show all assets" className="hover:text-foreground">
+                  <UserRound className="size-3.5" /> {t.library.compatibleWith(compatibleWith.name)}
+                  <button type="button" onClick={() => setCompatibleWith(null)} aria-label={t.library.showAll} className="hover:text-foreground">
                     <X className="size-3.5" />
                   </button>
                 </span>
@@ -509,7 +511,7 @@ function LibraryView() {
       <Sheet open={openAssetId !== null} onOpenChange={(open) => !open && closeDrawer()}>
         <SheetContent side="right" className="overflow-y-auto p-5 data-[side=right]:w-full data-[side=right]:sm:max-w-2xl sm:p-6">
           <SheetHeader className="sr-only">
-            <SheetTitle>Asset details</SheetTitle>
+            <SheetTitle>{t.common.assetDetails}</SheetTitle>
           </SheetHeader>
           {openAssetId !== null && (
             <AssetDetail
@@ -527,11 +529,12 @@ function LibraryView() {
 }
 
 export default function Home() {
+  const { t } = useI18n();
   return (
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-          Loading library…
+          {t.library.loadingLibrary}
         </div>
       }
     >

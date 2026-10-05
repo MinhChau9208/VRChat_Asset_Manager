@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Category, ScannerConfig, buildCategoryTree, pickFolder, saveScannerConfig } from "@/lib/api";
 import { Folder, FolderOpen, X } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 interface ScannerSettingsProps {
   config: ScannerConfig;
@@ -24,6 +25,7 @@ const toList = (text: string) =>
  * Edits where the scanner looks and how folder names map to categories.
  */
 export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, categories, onSaved }) => {
+  const { t, categoryName } = useI18n();
   const [roots, setRoots] = useState<string[]>(config.roots);
   const [rootInput, setRootInput] = useState("");
   const [archiveDirs, setArchiveDirs] = useState(config.archive_dirs.join(", "));
@@ -61,10 +63,10 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
       });
       setRoots(saved.roots);
       setRootInput("");
-      setMessage({ ok: true, text: "Settings saved." });
+      setMessage({ ok: true, text: t.scanner.saved });
       onSaved(saved);
     } catch (err) {
-      setMessage({ ok: false, text: err instanceof Error ? err.message : "Failed to save settings" });
+      setMessage({ ok: false, text: err instanceof Error ? err.message : t.scanner.saveFailed });
     } finally {
       setSaving(false);
     }
@@ -76,9 +78,9 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
     <div className="space-y-5">
       {/* Library roots */}
       <div>
-        <span className={labelClass}>Library folders</span>
+        <span className={labelClass}>{t.scanner.roots}</span>
         {roots.length === 0 && (
-          <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">Add the folder that holds your assets, e.g. N:\Unity Materials.</p>
+          <p className="text-xs text-amber-700 dark:text-amber-300 mb-2">{t.scanner.rootsHint}</p>
         )}
         <ul className="space-y-1 mb-2">
           {roots.map((r) => (
@@ -91,7 +93,7 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
                 type="button"
                 onClick={() => setRoots(roots.filter((x) => x !== r))}
                 className="text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 text-xs cursor-pointer"
-                title="Remove"
+                title={t.common.remove}
               >
                 <X className="size-3.5" />
               </button>
@@ -108,7 +110,7 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
                 addRoot(rootInput);
               }
             }}
-            placeholder="Folder path, then Enter"
+            placeholder={t.scanner.rootPlaceholder}
             className={`${inputClass} flex-1 font-mono`}
           />
           <button
@@ -116,32 +118,32 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
             onClick={handleBrowse}
             className="px-3 py-1.5 rounded-lg bg-muted hover:bg-accent text-foreground text-xs border border-border cursor-pointer"
           >
-            <FolderOpen className="size-4" /> Browse
+            <FolderOpen className="size-4" /> {t.scanner.browse}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className={labelClass}>Archive folders</label>
+          <label className={labelClass}>{t.scanner.archiveDirs}</label>
           <input value={archiveDirs} onChange={(e) => setArchiveDirs(e.target.value)} className={`${inputClass} w-full`} />
-          <p className="mt-1 text-xs text-muted-foreground">Where original zips are kept (comma separated).</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t.scanner.archiveHelp}</p>
         </div>
         <div>
-          <label className={labelClass}>Never scan</label>
+          <label className={labelClass}>{t.scanner.ignore}</label>
           <input value={ignore} onChange={(e) => setIgnore(e.target.value)} className={`${inputClass} w-full`} />
-          <p className="mt-1 text-xs text-muted-foreground">Folder/file names skipped and never read.</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t.scanner.ignoreHelp}</p>
         </div>
         <div>
-          <label className={labelClass}>Dependency BOOTH ids</label>
+          <label className={labelClass}>{t.scanner.deps}</label>
           <input value={deps} onChange={(e) => setDeps(e.target.value)} className={`${inputClass} w-full`} />
-          <p className="mt-1 text-xs text-muted-foreground">Linked in readmes but never the asset (lilToon…).</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t.scanner.depsHelp}</p>
         </div>
       </div>
 
       {/* Folder -> category mapping */}
       <div>
-        <span className={labelClass}>Folder name → category</span>
+        <span className={labelClass}>{t.scanner.mapping}</span>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 max-h-72 overflow-y-auto pr-1">
           {mapping.map(([folder, category], idx) => (
             <div key={idx} className="flex items-center gap-1.5">
@@ -150,7 +152,7 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
                 onChange={(e) =>
                   setMapping(mapping.map((m, i) => (i === idx ? [e.target.value.toLowerCase(), m[1]] : m)))
                 }
-                placeholder="folder"
+                placeholder={t.scanner.folder}
                 className={`${inputClass} w-28 font-mono`}
               />
               <span className="text-muted-foreground/70 text-xs">→</span>
@@ -159,13 +161,13 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
                 onChange={(e) => setMapping(mapping.map((m, i) => (i === idx ? [m[0], e.target.value] : m)))}
                 className={`${inputClass} flex-1 min-w-0 cursor-pointer`}
               >
-                {!categories.some((c) => c.name === category) && <option value={category}>{category} (missing)</option>}
+                {!categories.some((c) => c.name === category) && <option value={category}>{t.scanner.missingCategory(category)}</option>}
                 {tree.map((root) => (
                   <React.Fragment key={root.id}>
-                    <option value={root.name}>{root.name}</option>
+                    <option value={root.name}>{categoryName(root.name)}</option>
                     {root.children.map((child) => (
                       <option key={child.id} value={child.name}>
-                        &nbsp;&nbsp;└ {child.name}
+                        &nbsp;&nbsp;└ {categoryName(child.name)}
                       </option>
                     ))}
                   </React.Fragment>
@@ -175,7 +177,7 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
                 type="button"
                 onClick={() => setMapping(mapping.filter((_, i) => i !== idx))}
                 className="text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 text-xs px-1 cursor-pointer"
-                title="Remove"
+                title={t.common.remove}
               >
                 <X className="size-3.5" />
               </button>
@@ -187,7 +189,7 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
           onClick={() => setMapping([...mapping, ["", categories[0]?.name ?? "Other"]])}
           className="mt-2 text-xs text-primary hover:text-primary cursor-pointer"
         >
-          + Add mapping
+          {t.scanner.addMapping}
         </button>
       </div>
 
@@ -198,7 +200,7 @@ export const ScannerSettings: React.FC<ScannerSettingsProps> = ({ config, catego
           disabled={saving}
           className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold cursor-pointer disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Save settings"}
+          {saving ? t.scanner.saving : t.scanner.save}
         </button>
         {message && <span className={`text-xs ${message.ok ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>{message.text}</span>}
       </div>

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Asset, CompatAvatar, getAssets } from "@/lib/api";
 import { UserRound, X } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 interface CompatibleAvatarsInputProps {
   value: CompatAvatar[];
@@ -24,6 +25,7 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
 }) => {
   const [libraryAvatars, setLibraryAvatars] = useState<Asset[]>([]);
   const [nameInput, setNameInput] = useState("");
+  const { t } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -66,12 +68,12 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
   return (
     <div className="space-y-2">
       <label className="block text-xs font-medium text-foreground">
-        Compatible Avatars ({value.length})
+        {t.compat.label(value.length)}
       </label>
 
       {value.length === 0 ? (
         <p className="text-xs text-muted-foreground italic">
-          Not set. Add the avatars this asset is made for.
+          {t.compat.notSet}
         </p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
@@ -83,7 +85,7 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
                   ? "bg-violet-100 dark:bg-violet-950/50 text-violet-800 dark:text-violet-200 border-violet-300 dark:border-violet-800/70"
                   : "bg-muted text-foreground border-border/80"
               }`}
-              title={v.avatar_asset_id !== null ? "Avatar in your library" : "Avatar not in your library"}
+              title={v.avatar_asset_id !== null ? t.common.inLibrary : t.common.notInLibrary}
             >
               <UserRound className="size-3.5" />
               <span>{v.avatar_name}</span>
@@ -91,7 +93,7 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
                 type="button"
                 onClick={() => onChange(value.filter((_, i) => i !== idx))}
                 className="text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer p-0.5"
-                title={`Remove ${v.avatar_name}`}
+                title={t.compat.remove(v.avatar_name)}
               >
                 <X className="size-3.5" />
               </button>
@@ -110,7 +112,7 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
             }}
             className="sm:w-56 rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs sm:text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
           >
-            <option value="">+ From your library…</option>
+            <option value="">{t.compat.fromLibrary}</option>
             {unpicked.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
@@ -129,7 +131,7 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
                 addByName();
               }
             }}
-            placeholder="Other avatar name (e.g. Manuka) and press Enter"
+            placeholder={t.compat.otherPlaceholder}
             className="flex-1 rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
           />
           <button
@@ -137,7 +139,7 @@ export const CompatibleAvatarsInput: React.FC<CompatibleAvatarsInputProps> = ({
             onClick={addByName}
             className="px-3 py-1.5 rounded-lg bg-muted hover:bg-accent text-foreground text-xs font-medium border border-border transition-colors cursor-pointer shrink-0"
           >
-            + Add
+            {t.common.add}
           </button>
         </div>
       </div>

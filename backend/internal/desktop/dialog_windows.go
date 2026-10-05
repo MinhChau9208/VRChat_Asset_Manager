@@ -5,6 +5,7 @@ package desktop
 import (
 	"fmt"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -25,6 +26,12 @@ var (
 	procAttachThreadInput        = user32.NewProc("AttachThreadInput")
 	procSetForegroundWindow      = user32.NewProc("SetForegroundWindow")
 )
+
+// japaneseUI reports whether Windows is displayed in Japanese.
+func japaneseUI() bool {
+	langs, err := windows.GetUserPreferredUILanguages(windows.MUI_LANGUAGE_NAME)
+	return err == nil && len(langs) > 0 && strings.HasPrefix(strings.ToLower(langs[0]), "ja")
+}
 
 // ShowError shows a modal error message above other windows.
 func ShowError(title, text string) {

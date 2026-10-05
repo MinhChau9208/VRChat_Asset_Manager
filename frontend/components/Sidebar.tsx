@@ -8,6 +8,7 @@ import { categoryIcon } from "@/lib/categoryIcon";
 import { assetPreviewSrc } from "./AssetCard";
 import { cn } from "@/lib/utils";
 import { avatarHref } from "@/lib/routes";
+import { useI18n } from "@/lib/i18n";
 
 interface SidebarProps {
   categories: Category[];
@@ -109,6 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   draftCount,
   avatars = [],
 }) => {
+  const { t, categoryName } = useI18n();
   const selectCategory = (name: string) => {
     if (isFavoriteOnly && onToggleFavoriteOnly) onToggleFavoriteOnly();
     onSelectCategory(name);
@@ -119,7 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <nav className="flex gap-0.5 overflow-x-auto md:flex-col">
         <NavItem
           icon={LayoutGrid}
-          label="All Assets"
+          label={t.sidebar.allAssets}
           count={totalAssetsCount}
           active={!isFavoriteOnly && selectedCategory === "all"}
           onClick={() => selectCategory("all")}
@@ -127,19 +129,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {onToggleFavoriteOnly && (
           <NavItem
             icon={Heart}
-            label="Favorites"
+            label={t.sidebar.favorites}
             count={favoriteCount}
             tone="favorite"
             active={isFavoriteOnly}
             onClick={onToggleFavoriteOnly}
           />
         )}
-        <NavItem icon={ScanSearch} label="Scan & Review" count={draftCount} tone="review" href="/review" />
+        <NavItem icon={ScanSearch} label={t.sidebar.scanReview} count={draftCount} tone="review" href="/review" />
       </nav>
 
       {avatars.length > 0 && (
         <div>
-          <SectionTitle>Avatars</SectionTitle>
+          <SectionTitle>{t.sidebar.avatars}</SectionTitle>
           <div className="flex gap-1 overflow-x-auto md:flex-col">
             {avatars.map((a) => {
               const src = assetPreviewSrc(a);
@@ -166,12 +168,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div>
         <SectionTitle
           action={
-            <Link href="/categories" className="text-muted-foreground/70 hover:text-primary" title="Manage categories">
+            <Link href="/categories" className="text-muted-foreground/70 hover:text-primary" title={t.sidebar.manageCategories}>
               <Settings2 className="size-3.5" />
             </Link>
           }
         >
-          Categories
+          {t.sidebar.categories}
         </SectionTitle>
         <nav className="flex gap-0.5 overflow-x-auto md:flex-col">
           {isLoading && categories.length === 0
@@ -187,7 +189,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <NavItem
                     key={root.id}
                     icon={categoryIcon(root.name)}
-                    label={root.name}
+                    label={categoryName(root.name)}
                     count={subtotal}
                     active={isActive(root)}
                     onClick={() => selectCategory(root.name)}
@@ -195,7 +197,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   ...root.children.map((child) => (
                     <NavItem
                       key={child.id}
-                      label={child.name}
+                      label={categoryName(child.name)}
                       count={categoryCounts?.[child.id]}
                       indent
                       active={isActive(child)}
@@ -214,12 +216,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               selectedTags.length > 0 &&
               onClearTags && (
                 <button type="button" onClick={onClearTags} className="text-xs text-primary hover:underline">
-                  Clear ({selectedTags.length})
+                  {t.sidebar.clearTags(selectedTags.length)}
                 </button>
               )
             }
           >
-            Tags
+            {t.sidebar.tags}
           </SectionTitle>
           <div className="flex max-h-48 flex-wrap gap-1 overflow-y-auto px-1.5 md:max-h-none md:overflow-visible">
             {availableTags.map((tag) => {

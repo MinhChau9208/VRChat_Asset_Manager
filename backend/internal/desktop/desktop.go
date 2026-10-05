@@ -60,12 +60,13 @@ func RunTray(o TrayOptions) {
 		systray.SetTooltip(o.Tooltip)
 		systray.SetOnTapped(o.OnOpen)
 
-		open := systray.AddMenuItem("Open VRChat Asset Manager", "Show the app in your browser")
-		data := systray.AddMenuItem("Open data folder", "Your library, previews and backups")
+		txt := Text()
+		open := systray.AddMenuItem(txt.Open, txt.OpenTip)
+		data := systray.AddMenuItem(txt.Data, txt.DataTip)
 		systray.AddSeparator()
-		version := systray.AddMenuItem("Version "+o.Version, "")
+		version := systray.AddMenuItem(txt.Version+o.Version, "")
 		version.Disable()
-		quit := systray.AddMenuItem("Quit", "Stop the app")
+		quit := systray.AddMenuItem(txt.Quit, txt.QuitTip)
 
 		go func() {
 			for {

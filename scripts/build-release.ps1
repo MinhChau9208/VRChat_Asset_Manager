@@ -72,6 +72,7 @@ finally {
 
 # 4. Readme + zip.
 Copy-Item "$root\scripts\release-readme.txt" "$outDir\README.txt"
+Copy-Item "$root\scripts\release-readme-ja.txt" "$outDir\README_ja.txt"
 $zip = "$root\dist\VRChatAssetManager-$Version.zip"
 if (Test-Path $zip) { Remove-Item -Force $zip }
 # tar.exe (built into Windows 10+) rather than Compress-Archive, which on

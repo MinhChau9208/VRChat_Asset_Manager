@@ -24,6 +24,7 @@ import { assetPreviewSrc } from "./AssetCard";
 import { CompatibleAvatarsInput } from "./CompatibleAvatarsInput";
 import { BoothImportPanel, BoothSelection } from "./BoothImportPanel";
 import { TriangleAlert, X } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 interface AssetFormProps {
   initialData?: Asset;
@@ -38,6 +39,8 @@ export const AssetForm: React.FC<AssetFormProps> = ({
   onSubmitSuccess,
   onCancel,
 }) => {
+  const { t, categoryName } = useI18n();
+
   // Form fields
   const [name, setName] = useState(initialData?.name || "");
   const [categoryId, setCategoryId] = useState<number | null>(
@@ -123,7 +126,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
     try {
       setBoothSuggestion(await lookupBooth(boothUrl.trim()));
     } catch (err) {
-      setBoothError(err instanceof Error ? err.message : "BOOTH lookup failed");
+      setBoothError(err instanceof Error ? err.message : t.form.boothFailed);
     } finally {
       setIsFetchingBooth(false);
     }
@@ -155,17 +158,17 @@ export const AssetForm: React.FC<AssetFormProps> = ({
     const errors: { name?: string; boothUrl?: string } = {};
 
     if (!name.trim()) {
-      errors.name = "Asset name is required.";
+      errors.name = t.form.nameRequired;
     }
 
     if (boothUrl.trim()) {
       try {
         const parsed = new URL(boothUrl.trim());
         if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-          errors.boothUrl = "BOOTH URL must start with http:// or https://";
+          errors.boothUrl = t.form.urlProtocol;
         }
       } catch {
-        errors.boothUrl = "Please enter a valid URL (e.g., https://booth.pm/...)";
+        errors.boothUrl = t.form.urlInvalid;
       }
     }
 
@@ -186,7 +189,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
       if (exists) {
         setFieldErrors((prev) => ({
           ...prev,
-          tagInput: `Tag "${candidate}" has already been added.`,
+          tagInput: t.form.tagExists(candidate),
         }));
         return;
       }
@@ -195,7 +198,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
       setTagInput("");
       setFieldErrors((prev) => ({ ...prev, tagInput: undefined }));
     },
-    [tagInput, tags]
+    [tagInput, tags, t]
   );
 
   // Remove tag handler
@@ -276,7 +279,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
       const message =
         err instanceof Error
           ? err.message
-          : "An unexpected error occurred while saving.";
+          : t.form.unexpected;
       setFormError(message);
     } finally {
       setIsSubmitting(false);
@@ -319,14 +322,11 @@ export const AssetForm: React.FC<AssetFormProps> = ({
           />
         </div>
         <div className="space-y-1.5 text-sm text-muted-foreground">
-          <h3 className="text-sm font-medium text-foreground">Preview image</h3>
-          <p>Click the square, drop an image on it, or paste one with Ctrl+V (a screenshot of the BOOTH page works).</p>
-          <p>
-            You can also pick one of the BOOTH images with <span className="text-foreground">Fetch from BOOTH</span> below.
-            The image is saved when you save the asset.
-          </p>
+          <h3 className="text-sm font-medium text-foreground">{t.form.previewTitle}</h3>
+          <p>{t.form.previewHelp}</p>
+          <p>{t.form.previewBooth}</p>
           {(pendingPreviewFile || pendingPreviewUrl) && (
-            <p className="text-emerald-600 dark:text-emerald-400">New preview selected — it will be saved with the asset.</p>
+            <p className="text-emerald-600 dark:text-emerald-400">{t.form.previewSelected}</p>
           )}
           {previewError && <p className="text-destructive">{previewError}</p>}
         </div>
@@ -335,7 +335,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
       {/* Basic Info Section */}
       <div className="rounded-xl border border-border bg-card/60 p-5 space-y-4 backdrop-blur-sm">
         <h3 className="text-xs uppercase font-mono tracking-wider text-primary font-semibold">
-          General Information
+          {t.form.general}
         </h3>
 
         {/* Asset Name */}
@@ -344,7 +344,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             htmlFor="asset-name"
             className="block text-xs font-medium text-foreground mb-1"
           >
-            Asset Name <span className="text-rose-600 dark:text-rose-400">*</span>
+            {t.form.name} <span className="text-rose-600 dark:text-rose-400">*</span>
           </label>
           <input
             id="asset-name"
@@ -357,7 +357,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                 setFieldErrors((prev) => ({ ...prev, name: undefined }));
               }
             }}
-            placeholder="e.g. Cute Anime Hair, Gothic Dress, Selestia..."
+            placeholder={t.form.namePlaceholder}
             className={`w-full rounded-lg border bg-background/80 px-3 py-2 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 transition-all ${
               fieldErrors.name
                 ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
@@ -377,7 +377,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               htmlFor="asset-category"
               className="block text-xs font-medium text-foreground mb-1"
             >
-              Category
+              {t.form.category}
             </label>
             <select
               id="asset-category"
@@ -389,18 +389,18 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               disabled={isLoadingMetadata}
               className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-xs sm:text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-all cursor-pointer disabled:opacity-50"
             >
-              <option value="">None / Uncategorized</option>
+              <option value="">{t.form.noCategory}</option>
               {buildCategoryTree(categories).map((root) =>
                 root.children.length === 0 ? (
                   <option key={root.id} value={root.id}>
-                    {root.name}
+                    {categoryName(root.name)}
                   </option>
                 ) : (
-                  <optgroup key={root.id} label={root.name}>
-                    <option value={root.id}>{root.name} (general)</option>
+                  <optgroup key={root.id} label={categoryName(root.name)}>
+                    <option value={root.id}>{t.form.categoryGeneral(categoryName(root.name))}</option>
                     {root.children.map((child) => (
                       <option key={child.id} value={child.id}>
-                        {child.name}
+                        {categoryName(child.name)}
                       </option>
                     ))}
                   </optgroup>
@@ -409,7 +409,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             </select>
             {isLoadingMetadata && (
               <p className="mt-1 text-xs text-muted-foreground">
-                Loading categories...
+                {t.form.loadingCategories}
               </p>
             )}
           </div>
@@ -420,14 +420,14 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               htmlFor="asset-author"
               className="block text-xs font-medium text-foreground mb-1"
             >
-              Author / Creator
+              {t.form.author}
             </label>
             <input
               id="asset-author"
               type="text"
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
-              placeholder="e.g. Komado, 久, Booth Creator..."
+              placeholder={t.form.authorPlaceholder}
               className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-all"
             />
           </div>
@@ -439,7 +439,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             htmlFor="asset-booth-url"
             className="block text-xs font-medium text-foreground mb-1"
           >
-            BOOTH URL
+            {t.form.boothUrl}
           </label>
           <div className="flex gap-2">
           <input
@@ -464,9 +464,9 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             onClick={handleFetchBooth}
             disabled={!boothUrl.trim() || isFetchingBooth}
             className="px-3 py-2 rounded-lg bg-red-100 dark:bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold border border-red-300 dark:border-red-700/60 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Fill name, author, category, preview and compatible avatars from BOOTH"
+            title={t.form.fetchTitle}
           >
-            {isFetchingBooth ? "Fetching…" : "Fetch from BOOTH"}
+            {isFetchingBooth ? t.form.fetching : t.form.fetch}
           </button>
           </div>
           {fieldErrors.boothUrl && (
@@ -488,14 +488,14 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             htmlFor="asset-description"
             className="block text-xs font-medium text-foreground mb-1"
           >
-            Description & Notes
+            {t.form.description}
           </label>
           <textarea
             id="asset-description"
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Add notes, installation requirements, shader details, or instructions..."
+            placeholder={t.form.descriptionPlaceholder}
             className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-all resize-y"
           />
         </div>
@@ -504,9 +504,9 @@ export const AssetForm: React.FC<AssetFormProps> = ({
       {/* Filesystem Location Section */}
       <div className="rounded-xl border border-border bg-card/60 p-5 space-y-3 backdrop-blur-sm">
         <h3 className="text-xs uppercase font-mono tracking-wider text-primary font-semibold flex items-center justify-between">
-          <span>Local Filesystem Path</span>
+          <span>{t.form.location}</span>
           <span className="text-xs text-muted-foreground lowercase font-normal">
-            safe reference &bull; files are never deleted
+            {t.form.safeReference}
           </span>
         </h3>
 
@@ -515,7 +515,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             htmlFor="asset-local-path"
             className="block text-xs font-medium text-foreground mb-1"
           >
-            Windows Directory or File Path
+            {t.form.path}
           </label>
           <div className="flex gap-2">
             <input
@@ -523,20 +523,20 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               type="text"
               value={localPath}
               onChange={(e) => setLocalPath(e.target.value)}
-              placeholder="e.g. C:\VRChat Assets\Hair\CuteHair or \\server\share\..."
+              placeholder={t.form.pathPlaceholder}
               className="flex-1 font-mono rounded-lg border border-border bg-background/80 px-3 py-2 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-all"
             />
             <button
               type="button"
               onClick={handlePickFolder}
               disabled={isPickingFolder}
-              title="Open Windows Folder Browser"
+              title={t.form.browseTitle}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted hover:bg-accent active:bg-muted text-foreground hover:text-foreground border border-border text-xs font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
             >
               {isPickingFolder ? (
                 <>
                   <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary/40 border-t-transparent" />
-                  <span className="hidden sm:inline">Browsing...</span>
+                  <span className="hidden sm:inline">{t.form.browsing}</span>
                 </>
               ) : (
                 <>
@@ -553,14 +553,13 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                       d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                     />
                   </svg>
-                  <span>Browse...</span>
+                  <span>{t.form.browse}</span>
                 </>
               )}
             </button>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Paste any local Windows folder path or UNC network share. Deleting an
-            asset record will never delete or modify the contents of this path.
+            {t.form.pathHelp}
           </p>
         </div>
       </div>
@@ -568,16 +567,16 @@ export const AssetForm: React.FC<AssetFormProps> = ({
       {/* Tags Section */}
       <div className="rounded-xl border border-border bg-card/60 p-5 space-y-4 backdrop-blur-sm">
         <h3 className="text-xs uppercase font-mono tracking-wider text-primary font-semibold">
-          Tags & Metadata
+          {t.form.tagsSection}
         </h3>
 
         {/* Assigned Tag Chips */}
         <div>
           <label className="block text-xs font-medium text-foreground mb-2">
-            Assigned Tags ({tags.length})
+            {t.form.assignedTags(tags.length)}
           </label>
           {tags.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">No tags assigned yet.</p>
+            <p className="text-xs text-muted-foreground italic">{t.form.noTags}</p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {tags.map((tag, idx) => (
@@ -591,7 +590,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                     type="button"
                     onClick={() => handleRemoveTag(idx)}
                     className="text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer p-0.5"
-                    title={`Remove tag "${tag}"`}
+                    title={t.form.removeTag(tag)}
                   >
                     <X className="size-3.5" />
                   </button>
@@ -619,7 +618,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
                   handleAddTag();
                 }
               }}
-              placeholder="Type tag name and press Enter or comma..."
+              placeholder={t.form.tagPlaceholder}
               className="flex-1 rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-all"
             />
             <button
@@ -627,7 +626,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
               onClick={() => handleAddTag()}
               className="px-3 py-1.5 rounded-lg bg-muted hover:bg-accent text-foreground text-xs font-medium border border-border transition-colors cursor-pointer shrink-0"
             >
-              + Add
+              {t.common.add}
             </button>
           </div>
           {fieldErrors.tagInput && (
@@ -639,7 +638,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
         {suggestedTags.length > 0 && (
           <div>
             <span className="block text-xs text-muted-foreground mb-1.5">
-              Suggestions from your library (click to add):
+              {t.form.suggestions}
             </span>
             <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
               {suggestedTags.slice(0, 20).map((t) => (
@@ -675,7 +674,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             disabled={isSubmitting}
             className="px-4 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground bg-card hover:bg-muted border border-border transition-colors cursor-pointer disabled:opacity-50"
           >
-            Cancel
+            {t.common.cancel}
           </button>
         )}
 
@@ -687,10 +686,10 @@ export const AssetForm: React.FC<AssetFormProps> = ({
           {isSubmitting ? (
             <>
               <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              <span>{mode === "create" ? "Creating..." : "Saving..."}</span>
+              <span>{mode === "create" ? t.form.creating : t.form.saving}</span>
             </>
           ) : (
-            <span>{mode === "create" ? "Create Asset" : "Save Changes"}</span>
+            <span>{mode === "create" ? t.form.create : t.form.save}</span>
           )}
         </button>
       </div>

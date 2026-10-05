@@ -1,8 +1,11 @@
-VRChat Asset Manager
+﻿VRChat Asset Manager
 ====================
 
 A personal catalog of your VRChat assets (avatars, hair, outfits, gimmicks...):
 what you bought, what it looks like, where it is on your PC, and its BOOTH page.
+
+The language button at the top right switches between English and Japanese.
+日本語の説明は README_ja.txt をご覧ください。
 
 
 START

@@ -116,8 +116,8 @@ migrations on the backend.
 ### Just want to use it?
 
 Download `VRChatAssetManager-<version>.zip`, unzip it anywhere, and double-click
-**VRChatAssetManager.exe**. The app opens in your browser at http://127.0.0.1:47380; close the console
-window to stop it. Your library is kept in the `data` folder next to the exe. No Go, Node.js or
+**VRChatAssetManager.exe**. The app opens in your browser at http://127.0.0.1:47380 and stays in the
+system tray (click to reopen, right-click → Quit). Your library is kept in the `data` folder next to the exe. No Go, Node.js or
 terminal needed. The `README.txt` inside the zip covers the rest.
 
 To make that zip yourself (needs Go and Node.js):
@@ -193,6 +193,7 @@ so there the browser talks to a single origin.
 │   │   ├── scanner/         # Folder scanner, name matching, drafts
 │   │   ├── booth/           # BOOTH lookup, cache, suggestions
 │   │   ├── database/        # SQLite connection, migrations, backups
+│   │   ├── desktop/         # Tray icon, folder picker, message boxes (Windows)
 │   │   └── web/             # Serves the embedded UI in the release build
 │   └── cmd/                 # seed (sample data) and verify (end-to-end checks)
 ├── frontend/
@@ -202,7 +203,7 @@ so there the browser talks to a single origin.
 │   └── lib/                 # API client and helpers
 ├── data/                    # Your database, previews and backups (git-ignored)
 ├── docs/                    # API reference and screenshots
-├── scripts/                 # build-release.ps1 and the readme shipped in the zip
+├── scripts/                 # build-release.ps1, the readme shipped in the zip, icon/
 └── PROJECT_SPEC.md          # Specification and milestone history
 ```
 

@@ -50,10 +50,21 @@ New-Item -ItemType Directory -Force $outDir | Out-Null
 
 Push-Location "$root\backend"
 try {
-    go build -tags release -trimpath -ldflags "-s -w -X main.version=$Version" -o "$outDir\VRChatAssetManager.exe" .
+    # Exe icon and version details (Explorer > Properties), as a .syso file
+    # that go build links in. Windows wants a numeric version here.
+    $numeric = if ($Version -match '^v?(\d+(\.\d+){0,3})$') { $Matches[1] } else { "0.0.0" }
+    go run github.com/tc-hib/go-winres@v0.3.3 simply --arch amd64 --manifest gui `
+        --icon internal\desktop\icon.ico --product-name "VRChat Asset Manager" `
+        --file-description "VRChat Asset Manager" --original-filename VRChatAssetManager.exe `
+        --product-version $numeric --file-version $numeric
+    if ($LASTEXITCODE) { throw "go-winres failed" }
+
+    # -H windowsgui: no console window; the app lives in the tray.
+    go build -tags release -trimpath -ldflags "-s -w -H windowsgui -X main.version=$Version" -o "$outDir\VRChatAssetManager.exe" .
     if ($LASTEXITCODE) { throw "go build failed" }
 }
 finally {
+    Remove-Item rsrc_windows_*.syso -ErrorAction SilentlyContinue
     Pop-Location
 }
 

@@ -16,11 +16,18 @@ The first time, Windows may show "Windows protected your PC".
 The app is not code-signed; click "More info" -> "Run anyway".
 
 
-STOP
-----
-Close the black console window. The app only runs while that window is open.
+WHILE IT RUNS
+-------------
+The app sits in the system tray (bottom right, next to the clock; it may be
+hidden under the ^ arrow). Click the icon to open the app again.
+Right-click it for: Open data folder, Quit.
 
 Double-clicking the exe again while it is running just opens the browser.
+
+
+STOP
+----
+Right-click the tray icon -> Quit.
 
 
 FIRST STEPS
@@ -40,6 +47,7 @@ Everything the app stores is in the "data" folder next to the exe:
     data\app.db       your library
     data\previews\    preview pictures
     data\backups\     automatic backups made before updates
+    data\logs\        app.log, useful when something goes wrong
 
 To back up: copy the "data" folder.
 To move to another PC: copy the whole VRChatAssetManager folder.
@@ -47,13 +55,13 @@ To move to another PC: copy the whole VRChatAssetManager folder.
 
 UPDATE
 ------
-Close the app, replace VRChatAssetManager.exe with the new one, keep "data".
-The database is backed up automatically before it is upgraded.
+Quit the app (tray icon -> Quit), replace VRChatAssetManager.exe with the new
+one, keep "data". The database is backed up automatically before it is upgraded.
 
 
 PROBLEMS
 --------
 - "Cannot listen on ...": another program uses port 47380. Close it, or start
   the app from a command prompt with:  set PORT=47381 && VRChatAssetManager.exe
-- Nothing happens / the window closes at once: run it from a command prompt to
-  read the error message.
+- Anything else: errors are shown in a message box and written to
+  data\logs\app.log.

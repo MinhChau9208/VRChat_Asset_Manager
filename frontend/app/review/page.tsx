@@ -26,6 +26,7 @@ import {
 } from "@/lib/api";
 import { ScannerSettings } from "@/components/ScannerSettings";
 import { Check, Package, ScanSearch, Settings2, ShoppingBag, TriangleAlert, UserRound, X } from "lucide-react";
+import { assetHref } from "@/lib/routes";
 
 const selectClass =
   "rounded-lg border border-border bg-background/80 px-2 py-1 text-xs text-foreground focus:border-ring focus:outline-none cursor-pointer";
@@ -264,7 +265,7 @@ export default function ReviewPage() {
                 <ul className="mt-2 space-y-0.5 font-mono text-xs text-muted-foreground">
                   {scanResult.attached.map((a) => (
                     <li key={a.path}>
-                      <Link href={`/assets/${a.asset_id}`} className="text-foreground hover:text-primary">
+                      <Link href={assetHref(a.asset_id)} className="text-foreground hover:text-primary">
                         {a.asset_name}
                       </Link>{" "}
                       ← {a.path}
@@ -406,7 +407,7 @@ export default function ReviewPage() {
 
                   <div className="flex-1 min-w-0 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/assets/${d.id}`} className="text-sm font-semibold text-foreground hover:text-primary">
+                      <Link href={assetHref(d.id)} className="text-sm font-semibold text-foreground hover:text-primary">
                         {d.name}
                       </Link>
                       <CategorySelect
@@ -496,7 +497,7 @@ export default function ReviewPage() {
                       <Check className="inline size-3.5" /> Accept
                     </button>
                     <Link
-                      href={`/assets/${d.id}`}
+                      href={assetHref(d.id)}
                       className="px-3 py-1 rounded-lg bg-muted hover:bg-accent text-foreground text-xs text-center border border-border"
                     >
                       Edit

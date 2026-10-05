@@ -108,7 +108,12 @@ export interface UpdateAssetInput {
   compatible_avatars?: CompatAvatar[];
 }
 
+// In development the UI (next dev, :3000) talks to the Go API on :8080. The
+// release build sets NEXT_PUBLIC_SAME_ORIGIN_API=1 so requests go to the origin
+// that served the page (the Go binary serves both). A flag rather than an empty
+// NEXT_PUBLIC_API_URL, because Windows drops empty environment variables.
 const getApiBaseUrl = (): string => {
+  if (process.env.NEXT_PUBLIC_SAME_ORIGIN_API === "1") return "";
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 };
 

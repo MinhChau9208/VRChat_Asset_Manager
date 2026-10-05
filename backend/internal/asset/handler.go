@@ -857,7 +857,7 @@ func (h *Handler) CreateTag(w http.ResponseWriter, r *http.Request) {
 // PickFolder handles POST /api/filesystem/pick-folder
 func (h *Handler) PickFolder(w http.ResponseWriter, r *http.Request) {
 	// Empty path when cancelled, on failure, or outside Windows.
-	selectedPath, err := desktop.PickFolder("Select VRChat Asset Folder")
+	selectedPath, err := desktop.PickFolder(desktop.Text().PickFolder)
 	if err != nil {
 		log.Printf("Folder picker failed: %v", err)
 	}

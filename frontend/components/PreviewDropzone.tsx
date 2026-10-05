@@ -3,22 +3,24 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ImagePlus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
+import type { Messages } from "@/lib/messages/en";
 
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = 10 * 1024 * 1024;
 
 /** Returns an error message, or null if the file can be used as a preview. */
-export function validatePreviewFile(file: File): string | null {
-  if (!ACCEPTED.includes(file.type)) return "Only JPEG, PNG and WebP images can be used.";
-  if (file.size > MAX_SIZE) return "The image is larger than 10MB.";
+export function validatePreviewFile(file: File, t: Messages): string | null {
+  if (!ACCEPTED.includes(file.type)) return t.dropzone.badType;
+  if (file.size > MAX_SIZE) return t.dropzone.tooLarge;
   return null;
 }
 
-type Handlers = { onFile: (file: File) => void; onError?: (message: string) => void; busy: boolean };
+type Handlers = { onFile: (file: File) => void; onError?: (message: string) => void; busy: boolean; t: Messages };
 
 function acceptWith(h: Handlers, file: File | undefined | null) {
   if (!file || h.busy) return;
-  const problem = validatePreviewFile(file);
+  const problem = validatePreviewFile(file, h.t);
   if (problem) h.onError?.(problem);
   else h.onFile(file);
 }
@@ -56,11 +58,12 @@ export const PreviewDropzone: React.FC<PreviewDropzoneProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [imgError, setImgError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   // Keep the latest callbacks for the global paste listener.
-  const handlers = useRef<Handlers>({ onFile, onError, busy });
+  const handlers = useRef<Handlers>({ onFile, onError, busy, t });
   useEffect(() => {
-    handlers.current = { onFile, onError, busy };
+    handlers.current = { onFile, onError, busy, t };
   });
 
   const accept = (file: File | undefined | null) => acceptWith(handlers.current, file);
@@ -108,7 +111,7 @@ export const PreviewDropzone: React.FC<PreviewDropzoneProps> = ({
         dragging ? "border-primary bg-primary/10" : "border-border hover:border-primary/40",
         className
       )}
-      title="Click, drop or paste an image"
+      title={t.dropzone.hint}
     >
       {showImage && src ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -116,15 +119,15 @@ export const PreviewDropzone: React.FC<PreviewDropzoneProps> = ({
       ) : (
         <div className="flex flex-col items-center gap-2 px-4 text-center text-muted-foreground">
           <ImagePlus className="size-8" strokeWidth={1.5} />
-          <span className="text-sm">Click, drop or paste an image</span>
-          <span className="text-xs text-muted-foreground/70">JPEG, PNG or WebP · max 10MB</span>
+          <span className="text-sm">{t.dropzone.hint}</span>
+          <span className="text-xs text-muted-foreground/70">{t.dropzone.formats}</span>
         </div>
       )}
 
       {showImage && !busy && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/55 opacity-0 transition-opacity group-hover:opacity-100">
           <span className="flex items-center gap-2 rounded-md bg-black/60 px-3 py-1.5 text-sm text-white">
-            <ImagePlus className="size-4" /> Replace (click, drop or paste)
+            <ImagePlus className="size-4" /> {t.dropzone.replace}
           </span>
         </div>
       )}

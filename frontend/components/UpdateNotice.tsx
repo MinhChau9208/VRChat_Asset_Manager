@@ -4,10 +4,12 @@ import React, { useEffect, useState } from "react";
 import { ArrowUpCircle } from "lucide-react";
 import { VersionInfo, getVersionInfo } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 
 /** A small link to the release page when a newer version is out. */
 export function UpdateNotice() {
   const [info, setInfo] = useState<VersionInfo | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     getVersionInfo()
@@ -23,10 +25,10 @@ export function UpdateNotice() {
         href={info.url}
         target="_blank"
         rel="noopener noreferrer"
-        title={`You have ${info.version}. Download ${info.latest}, then replace the exe and keep the data folder.`}
+        title={t.header.updateTitle(info.version, info.latest ?? "")}
       >
         <ArrowUpCircle />
-        <span className="hidden sm:inline">Update {info.latest}</span>
+        <span className="hidden sm:inline">{t.header.update(info.latest ?? "")}</span>
       </a>
     </Button>
   );

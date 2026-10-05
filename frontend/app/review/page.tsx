@@ -27,6 +27,8 @@ import {
 import { ScannerSettings } from "@/components/ScannerSettings";
 import { Check, Package, ScanSearch, Settings2, ShoppingBag, TriangleAlert, UserRound, X } from "lucide-react";
 import { assetHref } from "@/lib/routes";
+import { useI18n } from "@/lib/i18n";
+import type { Messages } from "@/lib/messages/en";
 
 const selectClass =
   "rounded-lg border border-border bg-background/80 px-2 py-1 text-xs text-foreground focus:border-ring focus:outline-none cursor-pointer";
@@ -35,26 +37,27 @@ function CategorySelect({
   categories,
   value,
   onChange,
-  placeholder = "No category",
+  placeholder,
 }: {
   categories: Category[];
   value: number | null;
   onChange: (id: number | null) => void;
   placeholder?: string;
 }) {
+  const { t, categoryName } = useI18n();
   return (
     <select
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
       className={selectClass}
     >
-      <option value="">{placeholder}</option>
+      <option value="">{placeholder ?? t.review.noCategory}</option>
       {buildCategoryTree(categories).map((root) => (
         <React.Fragment key={root.id}>
-          <option value={root.id}>{root.name}</option>
+          <option value={root.id}>{categoryName(root.name)}</option>
           {root.children.map((child) => (
             <option key={child.id} value={child.id}>
-              &nbsp;&nbsp;└ {child.name}
+              &nbsp;&nbsp;└ {categoryName(child.name)}
             </option>
           ))}
         </React.Fragment>
@@ -63,7 +66,21 @@ function CategorySelect({
   );
 }
 
+// The backend reports changed fields as "name", "compatible:Manuka", "tag:…".
+function changeLabel(change: string, t: Messages): string {
+  if (change.startsWith("compatible:")) return t.review.changedCompat(change.slice("compatible:".length));
+  if (change.startsWith("tag:")) return t.review.changedTag(change.slice("tag:".length));
+  const fields: Record<string, string> = {
+    name: t.review.changedName,
+    author: t.review.changedAuthor,
+    category: t.review.changedCategory,
+    preview: t.review.changedPreview,
+  };
+  return fields[change] ?? change;
+}
+
 export default function ReviewPage() {
+  const { t } = useI18n();
   const [config, setConfig] = useState<ScannerConfig | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [drafts, setDrafts] = useState<Asset[]>([]);
@@ -103,7 +120,7 @@ export default function ReviewPage() {
         if (cfg.roots.length === 0) setShowSettings(true);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load review data");
+        if (!cancelled) setError(err instanceof Error ? err.message : t.review.loadFailed);
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -111,7 +128,7 @@ export default function ReviewPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, [reloadToken, t]);
 
   const reload = () => setReloadToken((t) => t + 1);
 
@@ -123,7 +140,7 @@ export default function ReviewPage() {
       await action();
       reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : t.common.somethingWrong);
     } finally {
       setBusy(false);
     }
@@ -136,7 +153,7 @@ export default function ReviewPage() {
       setScanResult(await runScan());
       reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Scan failed");
+      setError(err instanceof Error ? err.message : t.review.scanFailed);
     } finally {
       setIsScanning(false);
     }
@@ -154,10 +171,7 @@ export default function ReviewPage() {
   const allSelected = drafts.length > 0 && selected.size === drafts.length;
 
   const handleIgnore = (ids: number[]) => {
-    const message =
-      ids.length === 1
-        ? "Ignore this draft? It is removed and later scans skip its files (nothing on disk is touched)."
-        : `Ignore ${ids.length} drafts? They are removed and later scans skip their files (nothing on disk is touched).`;
+    const message = ids.length === 1 ? t.review.ignoreOne : t.review.ignoreMany(ids.length);
     if (window.confirm(message)) run(() => ignoreDrafts(ids));
   };
 
@@ -173,7 +187,7 @@ export default function ReviewPage() {
   const handleFetchBooth = (ids: number[]) => {
     const withLink = ids.filter((id) => drafts.find((d) => d.id === id)?.booth_url);
     if (withLink.length === 0) {
-      setError("None of the selected drafts has a BOOTH link yet.");
+      setError(t.review.noBoothLinks);
       return;
     }
     run(async () => {
@@ -181,6 +195,8 @@ export default function ReviewPage() {
       setBoothResults(results);
     });
   };
+
+  const sourceLabel = (source: string) => (source === "folder name" ? t.review.folderName : source);
 
   const setBooth = (d: Asset, url: string) => run(() => updateAsset(d.id, assetUpdatePayload(d, { booth_url: url })));
 
@@ -191,11 +207,11 @@ export default function ReviewPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <Link href="/" className="text-xs text-muted-foreground hover:text-primary transition-colors">
-              ← Back to library
+              {t.common.backToLibrary}
             </Link>
-            <h1 className="mt-1 text-xl font-bold tracking-tight text-foreground">Scan & Review</h1>
+            <h1 className="mt-1 text-xl font-bold tracking-tight text-foreground">{t.review.title}</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Scanning only reads your folders. New assets arrive as drafts for you to accept, edit or ignore.
+              {t.review.intro}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -204,7 +220,7 @@ export default function ReviewPage() {
               onClick={() => setShowSettings((v) => !v)}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card hover:bg-muted text-foreground text-xs border border-border cursor-pointer"
             >
-              <Settings2 className="size-4" /> Settings
+              <Settings2 className="size-4" /> {t.review.settings}
             </button>
             <button
               type="button"
@@ -215,10 +231,10 @@ export default function ReviewPage() {
               {isScanning ? (
                 <>
                   <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Scanning…
+                  {t.review.scanning}
                 </>
               ) : (
-                <><ScanSearch className="size-4" /> Scan now</>
+                <><ScanSearch className="size-4" /> {t.review.scanNow}</>
               )}
             </button>
           </div>
@@ -243,25 +259,17 @@ export default function ReviewPage() {
         {scanResult && (
           <section className="p-4 rounded-xl bg-card/60 border border-border text-xs space-y-2">
             <div className="flex flex-wrap gap-x-5 gap-y-1 text-foreground">
-              <span>
-                <b className="text-foreground">{scanResult.created}</b> new drafts
-              </span>
-              <span>
-                <b className="text-foreground">{scanResult.attached.length}</b> files linked to existing assets
-              </span>
-              <span>
-                <b className="text-foreground">{scanResult.already_linked}</b> already in library
-              </span>
+              <span>{t.review.newDrafts(<b className="text-foreground">{scanResult.created}</b>)}</span>
+              <span>{t.review.attached(<b className="text-foreground">{scanResult.attached.length}</b>)}</span>
+              <span>{t.review.alreadyLinked(<b className="text-foreground">{scanResult.already_linked}</b>)}</span>
               {scanResult.ignored > 0 && (
-                <span>
-                  <b className="text-foreground">{scanResult.ignored}</b> ignored paths skipped
-                </span>
+                <span>{t.review.ignoredSkipped(<b className="text-foreground">{scanResult.ignored}</b>)}</span>
               )}
               <span className="text-muted-foreground">{scanResult.duration_ms} ms</span>
             </div>
             {scanResult.attached.length > 0 && (
               <details>
-                <summary className="cursor-pointer text-primary">Show linked files</summary>
+                <summary className="cursor-pointer text-primary">{t.review.showLinked}</summary>
                 <ul className="mt-2 space-y-0.5 font-mono text-xs text-muted-foreground">
                   {scanResult.attached.map((a) => (
                     <li key={a.path}>
@@ -288,12 +296,11 @@ export default function ReviewPage() {
           <section className="p-4 rounded-xl bg-card/60 border border-red-300 dark:border-red-900/40 text-xs space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-foreground">
-                BOOTH: <b className="text-foreground">{boothResults.filter((r) => r.ok).length}</b> updated
-                {boothResults.some((r) => !r.ok) && (
-                  <>
-                    , <b className="text-rose-700 dark:text-rose-300">{boothResults.filter((r) => !r.ok).length}</b> failed
-                  </>
-                )}
+                {t.review.boothUpdated(<b className="text-foreground">{boothResults.filter((r) => r.ok).length}</b>)}
+                {boothResults.some((r) => !r.ok) &&
+                  t.review.boothFailed(
+                    <b className="text-rose-700 dark:text-rose-300">{boothResults.filter((r) => !r.ok).length}</b>
+                  )}
               </span>
               <button type="button" onClick={() => setBoothResults(null)} className="text-muted-foreground hover:text-foreground cursor-pointer">
                 <X className="size-4" />
@@ -303,7 +310,7 @@ export default function ReviewPage() {
               {boothResults.map((r) => (
                 <li key={r.asset_id} className={r.ok ? "text-muted-foreground" : "text-rose-700 dark:text-rose-300"}>
                   {r.ok ? <Check className="inline size-3.5" /> : <X className="inline size-3.5" />} {r.name}
-                  {r.ok && r.changed && r.changed.length > 0 && <span className="text-muted-foreground"> · {r.changed.join(", ")}</span>}
+                  {r.ok && r.changed && r.changed.length > 0 && <span className="text-muted-foreground"> · {r.changed.map((c) => changeLabel(c, t)).join(", ")}</span>}
                   {r.error && <span> · {r.error}</span>}
                 </li>
               ))}
@@ -316,8 +323,7 @@ export default function ReviewPage() {
             href="/?local_status=missing"
             className="block p-3 rounded-lg bg-amber-100 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/50 text-xs text-amber-700 dark:text-amber-300 hover:border-amber-600"
           >
-            <TriangleAlert className="mr-1 inline size-4" /> {missingCount} asset{missingCount === 1 ? "" : "s"} in your library point to files that are missing
-            from disk. View them →
+            <TriangleAlert className="mr-1 inline size-4" /> {t.review.missing(missingCount)}
           </Link>
         )}
 
@@ -330,8 +336,8 @@ export default function ReviewPage() {
               onChange={() => setSelected(allSelected ? new Set() : new Set(drafts.map((d) => d.id)))}
               className="accent-cyan-500"
             />
-            {drafts.length} draft{drafts.length === 1 ? "" : "s"}
-            {selected.size > 0 && ` · ${selected.size} selected`}
+            {t.review.drafts(drafts.length)}
+            {selected.size > 0 && t.review.selectedSuffix(selected.size)}
           </label>
           {selected.size > 0 && (
             <>
@@ -341,16 +347,16 @@ export default function ReviewPage() {
                 disabled={busy}
                 className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
               >
-                <Check className="size-4" /> Accept selected
+                <Check className="size-4" /> {t.review.acceptSelected}
               </button>
               <button
                 type="button"
                 onClick={() => handleFetchBooth(selectedIds)}
                 disabled={busy}
                 className="px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
-                title="Fill name, author, empty category, preview and compatible avatars from BOOTH"
+                title={t.review.fetchTitle}
               >
-                <ShoppingBag className="size-4" /> {busy ? "Working…" : "Fetch BOOTH info"}
+                <ShoppingBag className="size-4" /> {busy ? t.review.working : t.review.fetchBooth}
               </button>
               <button
                 type="button"
@@ -358,13 +364,13 @@ export default function ReviewPage() {
                 disabled={busy}
                 className="px-3 py-1.5 rounded-lg bg-muted hover:bg-accent text-foreground text-xs border border-border cursor-pointer disabled:opacity-50"
               >
-                Ignore selected
+                {t.review.ignoreSelected}
               </button>
               <CategorySelect
                 categories={categories}
                 value={null}
                 onChange={(id) => setCategory(selectedIds, id)}
-                placeholder="Set category…"
+                placeholder={t.review.setCategory}
               />
             </>
           )}
@@ -372,10 +378,10 @@ export default function ReviewPage() {
 
         {/* Draft list */}
         {isLoading ? (
-          <p className="text-xs text-muted-foreground">Loading…</p>
+          <p className="text-xs text-muted-foreground">{t.common.loading}</p>
         ) : drafts.length === 0 ? (
           <div className="p-10 text-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
-            No drafts to review. {config?.roots.length ? "Run a scan to look for new assets." : "Add a library folder in Settings first."}
+            {t.review.noDrafts} {config?.roots.length ? t.review.runScan : t.review.addFolderFirst}
           </div>
         ) : (
           <ul className="space-y-2">
@@ -419,7 +425,7 @@ export default function ReviewPage() {
 
                     <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                       <span title={(d.files ?? []).map((f) => f.path).join("\n")}>
-                        {(d.files ?? []).length} file{(d.files ?? []).length === 1 ? "" : "s"}
+                        {t.review.files((d.files ?? []).length)}
                       </span>
                       {versions.map((v) => (
                         <span key={v} className="px-1.5 rounded bg-primary/15 text-primary border border-primary/60 font-mono">
@@ -436,10 +442,10 @@ export default function ReviewPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-800/60 hover:border-red-600"
-                          title={info?.booth_source ? `Found in ${info.booth_source}` : undefined}
+                          title={info?.booth_source ? t.review.foundIn(sourceLabel(info.booth_source)) : undefined}
                         >
                           <ShoppingBag className="inline size-3.5" /> BOOTH {d.booth_url.split("/").pop()}
-                          {info?.booth_source && <span className="text-red-600 dark:text-red-400/70"> · {info.booth_source}</span>}
+                          {info?.booth_source && <span className="text-red-600 dark:text-red-400/70"> · {sourceLabel(info.booth_source)}</span>}
                         </a>
                       ) : (
                         <a
@@ -447,9 +453,9 @@ export default function ReviewPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-muted-foreground hover:text-red-700 dark:hover:text-red-300"
-                          title="Open a BOOTH search for this name, then paste the item URL via Edit"
+                          title={t.review.searchTitle}
                         >
-                          No BOOTH link · search on BOOTH ↗
+                          {t.review.noBoothLink}
                         </a>
                       )}
                       {d.booth_url && (
@@ -458,9 +464,9 @@ export default function ReviewPage() {
                           onClick={() => handleFetchBooth([d.id])}
                           disabled={busy}
                           className="px-1.5 py-0.5 rounded bg-muted text-red-800 dark:text-red-200 border border-red-300 dark:border-red-900/60 hover:border-red-600 cursor-pointer disabled:opacity-50"
-                          title="Fill name, author, empty category, preview and compatible avatars from BOOTH"
+                          title={t.review.fetchTitle}
                         >
-                          ⤓ fetch info
+                          {t.review.fetchInfo}
                         </button>
                       )}
                       {otherCandidates.map((c) => (
@@ -470,9 +476,9 @@ export default function ReviewPage() {
                           onClick={() => setBooth(d, c.url)}
                           disabled={busy}
                           className="px-1.5 py-0.5 rounded bg-muted text-foreground border border-border hover:border-border cursor-pointer"
-                          title={`Found in ${c.source}. Click to use.`}
+                          title={t.review.candidateTitle(sourceLabel(c.source))}
                         >
-                          use {c.url.split("/").pop()}?
+                          {t.review.useCandidate(c.url.split("/").pop() ?? "")}
                         </button>
                       ))}
                       {(d.compatible_avatars ?? []).map((c) => (
@@ -494,13 +500,13 @@ export default function ReviewPage() {
                       disabled={busy}
                       className="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
                     >
-                      <Check className="inline size-3.5" /> Accept
+                      <Check className="inline size-3.5" /> {t.common.accept}
                     </button>
                     <Link
                       href={assetHref(d.id)}
                       className="px-3 py-1 rounded-lg bg-muted hover:bg-accent text-foreground text-xs text-center border border-border"
                     >
-                      Edit
+                      {t.common.edit}
                     </Link>
                     <button
                       type="button"
@@ -508,7 +514,7 @@ export default function ReviewPage() {
                       disabled={busy}
                       className="px-3 py-1 rounded-lg text-muted-foreground hover:text-rose-700 dark:hover:text-rose-300 text-xs cursor-pointer disabled:opacity-50"
                     >
-                      Ignore
+                      {t.common.ignore}
                     </button>
                   </div>
                 </li>
@@ -525,7 +531,7 @@ export default function ReviewPage() {
               onClick={() => setShowIgnored((v) => !v)}
               className="text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              {showIgnored ? "▾" : "▸"} {ignoredPaths.length} ignored path{ignoredPaths.length === 1 ? "" : "s"}
+              {showIgnored ? "▾" : "▸"} {t.review.ignoredPaths(ignoredPaths.length)}
             </button>
             {showIgnored && (
               <ul className="mt-2 space-y-1">
@@ -538,7 +544,7 @@ export default function ReviewPage() {
                       disabled={busy}
                       className="text-primary hover:text-primary cursor-pointer font-sans"
                     >
-                      Restore
+                      {t.review.restore}
                     </button>
                   </li>
                 ))}

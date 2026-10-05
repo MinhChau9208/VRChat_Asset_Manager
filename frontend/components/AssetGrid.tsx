@@ -6,6 +6,7 @@ import { Asset } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { AssetCard, CardSize, ViewMode } from "./AssetCard";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 interface AssetGridProps {
   assets: Asset[];
@@ -96,14 +97,15 @@ export const AssetGrid: React.FC<AssetGridProps> = ({
   onToggleSelect,
   welcome,
 }) => {
+  const { t, categoryName } = useI18n();
   if (error) {
     return (
       <EmptyState
         icon={TriangleAlert}
         tone="error"
-        title="Unable to load assets"
+        title={t.grid.loadFailed}
         text={<span className="font-mono text-xs">{error}</span>}
-        action="Retry"
+        action={t.common.retry}
         onAction={onRetry}
       />
     );
@@ -136,9 +138,9 @@ export const AssetGrid: React.FC<AssetGridProps> = ({
       return (
         <EmptyState
           icon={Heart}
-          title="No favorite assets yet"
-          text="Click the heart on any asset to keep it here."
-          action="Browse all assets"
+          title={t.grid.noFavorites}
+          text={t.grid.noFavoritesText}
+          action={t.grid.browseAll}
           onAction={onClearFilters}
         />
       );
@@ -147,13 +149,9 @@ export const AssetGrid: React.FC<AssetGridProps> = ({
       return (
         <EmptyState
           icon={SearchX}
-          title="No assets match your search"
-          text={
-            <>
-              Nothing found for &ldquo;<span className="text-primary">{searchQuery}</span>&rdquo;. Try a name, author or tag.
-            </>
-          }
-          action="Clear search"
+          title={t.grid.noSearchMatch}
+          text={t.grid.nothingFound(<span className="text-primary">{searchQuery}</span>)}
+          action={t.grid.clearSearch}
           onAction={onClearFilters}
         />
       );
@@ -162,9 +160,9 @@ export const AssetGrid: React.FC<AssetGridProps> = ({
       return (
         <EmptyState
           icon={SlidersHorizontal}
-          title="No matching assets"
-          text="No assets match the current filters."
-          action="Reset filters"
+          title={t.grid.noFilterMatch}
+          text={t.grid.noFilterMatchText}
+          action={t.grid.resetFilters}
           onAction={onClearFilters}
         />
       );
@@ -173,9 +171,9 @@ export const AssetGrid: React.FC<AssetGridProps> = ({
       return (
         <EmptyState
           icon={FolderOpen}
-          title={`No assets in ${selectedCategory}`}
-          text="Nothing is in this category yet."
-          action="View all assets"
+          title={t.grid.emptyCategory(categoryName(selectedCategory))}
+          text={t.grid.emptyCategoryText}
+          action={t.grid.viewAll}
           onAction={onClearFilters}
         />
       );
@@ -184,8 +182,8 @@ export const AssetGrid: React.FC<AssetGridProps> = ({
     return (
       <EmptyState
         icon={Sparkles}
-        title="No assets yet"
-        text="Add your first asset with “Add Asset”, or scan your asset folder from Scan & Review."
+        title={t.grid.empty}
+        text={t.grid.emptyText}
       />
     );
   }

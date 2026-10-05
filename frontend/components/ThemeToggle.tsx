@@ -11,6 +11,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useI18n } from "@/lib/i18n";
 
 // The theme is only known in the browser; render a neutral icon on the server.
 const useMounted = () =>
@@ -24,25 +25,26 @@ const useMounted = () =>
 export function ThemeToggle() {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const mounted = useMounted();
+  const { t } = useI18n();
   const Icon = !mounted ? Monitor : theme === "system" ? Monitor : resolvedTheme === "light" ? Sun : Moon;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Theme">
+        <Button variant="ghost" size="icon" aria-label={t.header.theme}>
           <Icon />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuRadioGroup value={mounted ? theme : undefined} onValueChange={setTheme}>
           <DropdownMenuRadioItem value="dark">
-            <Moon /> Dark
+            <Moon /> {t.header.dark}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="light">
-            <Sun /> Light
+            <Sun /> {t.header.light}
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="system">
-            <Monitor /> System
+            <Monitor /> {t.header.system}
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>

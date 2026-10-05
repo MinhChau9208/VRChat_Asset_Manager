@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "./ThemeToggle";
 import { UpdateNotice } from "./UpdateNotice";
+import { LanguageToggle } from "./LanguageToggle";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
@@ -16,6 +18,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange, isConnected }) => {
+  const { t } = useI18n();
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-md sm:px-6">
       <Link href="/" className="flex shrink-0 items-center gap-2.5">
@@ -31,7 +34,7 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange, isC
           id="search-input"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Search by name, author, tag…"
+          placeholder={t.header.search}
           className="h-9 pl-9 pr-8"
         />
         {searchQuery && (
@@ -39,7 +42,7 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange, isC
             type="button"
             onClick={() => onSearchChange("")}
             className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
-            aria-label="Clear search"
+            aria-label={t.header.clearSearch}
           >
             <X className="size-4" />
           </button>
@@ -47,12 +50,13 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange, isC
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        <LanguageToggle />
         <ThemeToggle />
         <UpdateNotice />
         <Button asChild size="sm">
           <Link href="/assets/new" id="add-asset-header-btn">
             <Plus />
-            <span className="hidden sm:inline">Add Asset</span>
+            <span className="hidden sm:inline">{t.header.addAsset}</span>
           </Link>
         </Button>
         <span
@@ -60,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({ searchQuery, onSearchChange, isC
             "size-2.5 rounded-full",
             isConnected ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]" : "animate-pulse bg-rose-500"
           )}
-          title={isConnected ? "Backend connected" : "Backend unreachable"}
+          title={isConnected ? t.header.connected : t.header.unreachable}
         />
       </div>
     </header>

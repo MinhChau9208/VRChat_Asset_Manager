@@ -14,6 +14,7 @@ import {
   updateCategory,
 } from "@/lib/api";
 import { Trash2 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 const inputClass =
   "rounded-lg border border-border bg-background/80 px-3 py-1.5 text-xs sm:text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring";
@@ -21,6 +22,7 @@ const iconButtonClass =
   "h-7 w-7 inline-flex items-center justify-center rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed";
 
 export default function CategoriesPage() {
+  const { t, categoryName } = useI18n();
   const [categories, setCategories] = useState<Category[]>([]);
   const [stats, setStats] = useState<LibraryStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,7 +44,7 @@ export default function CategoriesPage() {
         setStats(libraryStats);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load categories");
+        if (!cancelled) setError(err instanceof Error ? err.message : t.categories.loadFailed);
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -50,7 +52,7 @@ export default function CategoriesPage() {
     return () => {
       cancelled = true;
     };
-  }, [reloadToken]);
+  }, [reloadToken, t]);
 
   const tree = buildCategoryTree(categories);
   const topLevel = tree.map(({ children, ...c }) => ({ ...c, hasChildren: children.length > 0 }));
@@ -64,7 +66,7 @@ export default function CategoriesPage() {
       setReloadToken((t) => t + 1);
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : t.common.somethingWrong);
       return false;
     } finally {
       setBusy(false);
@@ -111,10 +113,8 @@ export default function CategoriesPage() {
 
   const handleDelete = (cat: Category) => {
     const count = stats?.by_category[cat.id] ?? 0;
-    const message =
-      count > 0
-        ? `Delete "${cat.name}"? Its ${count} asset(s) will become uncategorized.`
-        : `Delete "${cat.name}"?`;
+    const name = categoryName(cat.name);
+    const message = count > 0 ? t.categories.deleteWithAssets(name, count) : t.categories.deleteConfirm(name);
     if (window.confirm(message)) {
       run(() => deleteCategory(cat.id));
     }
@@ -136,7 +136,7 @@ export default function CategoriesPage() {
             className={iconButtonClass}
             onClick={() => handleMove(siblings, index, -1)}
             disabled={busy || index === 0}
-            title="Move up"
+            title={t.categories.moveUp}
           >
             ▲
           </button>
@@ -145,7 +145,7 @@ export default function CategoriesPage() {
             className={iconButtonClass}
             onClick={() => handleMove(siblings, index, 1)}
             disabled={busy || index === siblings.length - 1}
-            title="Move down"
+            title={t.categories.moveDown}
           >
             ▼
           </button>
@@ -172,14 +172,17 @@ export default function CategoriesPage() {
                 setEditName(cat.name);
               }}
               className={`text-left cursor-text ${isChild ? "text-sm text-foreground" : "text-sm font-semibold text-foreground"}`}
-              title="Click to rename"
+              title={t.categories.rename}
             >
-              {cat.name}
+              {categoryName(cat.name)}
+              {categoryName(cat.name) !== cat.name && (
+                <span className="ml-1.5 text-xs font-normal text-muted-foreground">({cat.name})</span>
+              )}
             </button>
           )}
           <div className="text-xs text-muted-foreground">
-            {count} asset{count === 1 ? "" : "s"}
-            {node && node.children.length > 0 && ` · ${node.children.length} subcategories`}
+            {t.common.assets(count)}
+            {node && node.children.length > 0 && t.categories.subcategories(node.children.length)}
           </div>
         </div>
 
@@ -190,14 +193,14 @@ export default function CategoriesPage() {
             onChange={(e) => handleReparent(cat, e.target.value === "" ? null : Number(e.target.value))}
             disabled={busy}
             className={`${inputClass} w-40 cursor-pointer`}
-            title="Parent category"
+            title={t.categories.parent}
           >
-            <option value="">Top level</option>
+            <option value="">{t.categories.topLevel}</option>
             {topLevel
               .filter((p) => p.id !== cat.id)
               .map((p) => (
                 <option key={p.id} value={p.id}>
-                  Under {p.name}
+                  {t.categories.under(categoryName(p.name))}
                 </option>
               ))}
           </select>
@@ -208,7 +211,7 @@ export default function CategoriesPage() {
           onClick={() => handleDelete(cat)}
           disabled={busy || Boolean(node && node.children.length > 0)}
           className={`${iconButtonClass} hover:text-rose-600 dark:hover:text-rose-400`}
-          title={node && node.children.length > 0 ? "Move or delete its subcategories first" : "Delete"}
+          title={node && node.children.length > 0 ? t.categories.deleteChildrenFirst : t.common.delete}
         >
           <Trash2 className="size-4" />
         </button>
@@ -222,11 +225,11 @@ export default function CategoriesPage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <Link href="/" className="text-xs text-muted-foreground hover:text-primary transition-colors">
-              ← Back to library
+              {t.common.backToLibrary}
             </Link>
-            <h1 className="mt-1 text-xl font-bold tracking-tight text-foreground">Categories</h1>
+            <h1 className="mt-1 text-xl font-bold tracking-tight text-foreground">{t.categories.title}</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Two levels: a category can hold subcategories. Filtering by a parent also shows its subcategories&apos; assets.
+              {t.categories.intro}
             </p>
           </div>
         </div>
@@ -238,7 +241,7 @@ export default function CategoriesPage() {
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="New category name (e.g. Nail)"
+            placeholder={t.categories.newPlaceholder}
             className={`${inputClass} flex-1`}
           />
           <select
@@ -246,10 +249,10 @@ export default function CategoriesPage() {
             onChange={(e) => setNewParent(e.target.value === "" ? null : Number(e.target.value))}
             className={`${inputClass} sm:w-48 cursor-pointer`}
           >
-            <option value="">Top level</option>
+            <option value="">{t.categories.topLevel}</option>
             {topLevel.map((p) => (
               <option key={p.id} value={p.id}>
-                Under {p.name}
+                {t.categories.under(categoryName(p.name))}
               </option>
             ))}
           </select>
@@ -258,7 +261,7 @@ export default function CategoriesPage() {
             disabled={busy || !newName.trim()}
             className="px-4 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold cursor-pointer disabled:opacity-50"
           >
-            + Add
+            {t.common.add}
           </button>
         </form>
 
@@ -267,7 +270,7 @@ export default function CategoriesPage() {
         )}
 
         {isLoading ? (
-          <p className="text-xs text-muted-foreground">Loading categories…</p>
+          <p className="text-xs text-muted-foreground">{t.categories.loading}</p>
         ) : (
           <ul className="space-y-0.5 rounded-xl bg-card/40 border border-border p-2">
             {tree.map((root, i) => (

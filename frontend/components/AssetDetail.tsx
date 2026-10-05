@@ -53,6 +53,7 @@ import { PreviewDropzone } from "./PreviewDropzone";
 import { assetPreviewSrc } from "./AssetCard";
 import { cn } from "@/lib/utils";
 import { assetHref, avatarHref } from "@/lib/routes";
+import { useI18n } from "@/lib/i18n";
 
 interface AssetDetailProps {
   assetId: number | string;
@@ -81,6 +82,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
   const [isEditing, setIsEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState<null | "preview" | "folder" | "delete">(null);
+  const { t, categoryName, formatDate } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -89,12 +91,12 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
         if (!cancelled) setAsset(a);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setLoadError(errorMessage(err, "Failed to load asset"));
+        if (!cancelled) setLoadError(errorMessage(err, t.detail.loadFailed));
       });
     return () => {
       cancelled = true;
     };
-  }, [assetId, reloadToken]);
+  }, [assetId, reloadToken, t]);
 
   const update = (next: Asset) => {
     setAsset(next);
@@ -114,7 +116,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
             setReloadToken((t) => t + 1);
           }}
         >
-          Retry
+          {t.common.retry}
         </Button>
       </div>
     );
@@ -141,9 +143,9 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
     setBusy("preview");
     try {
       update(await uploadAssetPreview(asset.id, file));
-      toast.success("Preview updated");
+      toast.success(t.detail.previewUpdated);
     } catch (err) {
-      toast.error(errorMessage(err, "Failed to upload preview"));
+      toast.error(errorMessage(err, t.detail.uploadFailed));
     } finally {
       setBusy(null);
     }
@@ -154,9 +156,9 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
     try {
       await deleteAssetPreview(asset.id);
       update({ ...asset, preview_path: "", updated_at: new Date().toISOString() });
-      toast.success("Preview removed");
+      toast.success(t.detail.previewRemoved);
     } catch (err) {
-      toast.error(errorMessage(err, "Failed to remove preview"));
+      toast.error(errorMessage(err, t.detail.removeFailed));
     } finally {
       setBusy(null);
     }
@@ -167,7 +169,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
     try {
       await openAssetFolder(asset.id);
     } catch (err) {
-      toast.error(errorMessage(err, "Failed to open folder"));
+      toast.error(errorMessage(err, t.detail.openFailed));
     } finally {
       setBusy(null);
     }
@@ -180,7 +182,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
       await toggleAssetFavorite(asset.id, next);
     } catch {
       update({ ...asset, is_favorite: !next });
-      toast.error("Failed to update favorite");
+      toast.error(t.detail.favoriteFailed);
     }
   };
 
@@ -188,9 +190,9 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
     try {
       await acceptDrafts([asset.id]);
       update({ ...asset, status: "active" });
-      toast.success("Added to your library");
+      toast.success(t.detail.addedToLibrary);
     } catch (err) {
-      toast.error(errorMessage(err, "Failed to accept draft"));
+      toast.error(errorMessage(err, t.detail.acceptFailed));
     }
   };
 
@@ -199,10 +201,10 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
     try {
       await deleteAsset(asset.id);
       setConfirmDelete(false);
-      toast.success(`Deleted “${asset.name}”`);
+      toast.success(t.detail.deleted(asset.name));
       onDeleted?.(asset.id);
     } catch (err) {
-      toast.error(errorMessage(err, "Failed to delete asset"));
+      toast.error(errorMessage(err, t.detail.deleteFailed));
       setBusy(null);
     }
   };
@@ -215,7 +217,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
         onSubmitSuccess={(updated) => {
           update(updated);
           setIsEditing(false);
-          toast.success("Changes saved");
+          toast.success(t.detail.saved);
         }}
         onCancel={() => setIsEditing(false)}
       />
@@ -226,9 +228,9 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
     <div className="space-y-5">
       {asset.status === "draft" && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 dark:border-amber-700/50 bg-amber-100 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
-          <span className="flex-1">This is a draft from the scanner. It stays hidden from the library until you accept it.</span>
+          <span className="flex-1">{t.detail.draftBanner}</span>
           <Button size="sm" onClick={handleAccept} className="bg-emerald-600 text-white hover:bg-emerald-500">
-            <Check /> Accept
+            <Check /> {t.common.accept}
           </Button>
         </div>
       )}
@@ -239,30 +241,30 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
             <Badge variant="secondary" className="gap-1">
               <CategoryIcon name={asset.category?.name} className="size-3.5" />
-              {asset.category?.name ?? "Uncategorized"}
+              {asset.category ? categoryName(asset.category.name) : t.common.uncategorized}
             </Badge>
           </div>
           <h1 className={cn("font-semibold leading-tight text-foreground", variant === "page" ? "text-2xl" : "text-xl")}>
             {asset.name}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{asset.author ? `by ${asset.author}` : "Unknown author"}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{asset.author ? t.common.by(asset.author) : t.common.unknownAuthor}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
             onClick={handleFavorite}
-            aria-label={asset.is_favorite ? "Remove from favorites" : "Add to favorites"}
+            aria-label={asset.is_favorite ? t.card.removeFavorite : t.card.addFavorite}
             className={cn(asset.is_favorite && "text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300")}
           >
             <Heart className={cn(asset.is_favorite && "fill-current")} />
           </Button>
           <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-            <Pencil /> Edit
+            <Pencil /> {t.common.edit}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="More actions">
+              <Button variant="ghost" size="icon" aria-label={t.detail.moreActions}>
                 <MoreHorizontal />
               </Button>
             </DropdownMenuTrigger>
@@ -270,20 +272,20 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
               {variant === "drawer" && (
                 <DropdownMenuItem asChild>
                   <Link href={assetHref(asset.id)}>
-                    <Maximize2 /> Open full page
+                    <Maximize2 /> {t.detail.openFullPage}
                   </Link>
                 </DropdownMenuItem>
               )}
               {isAvatar && (
                 <DropdownMenuItem asChild>
                   <Link href={avatarHref(asset.id)}>
-                    <UserRound /> Avatar page
+                    <UserRound /> {t.detail.avatarPage}
                   </Link>
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onSelect={() => setConfirmDelete(true)}>
-                <Trash2 /> Delete
+                <Trash2 /> {t.common.delete}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -303,11 +305,11 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <CalendarDays className="size-3.5" />
-              Added {new Date(asset.created_at).toLocaleDateString()}
+              {t.detail.added(formatDate(asset.created_at))}
             </span>
             {asset.preview_path && (
               <button type="button" onClick={handleRemovePreview} className="hover:text-destructive" disabled={busy !== null}>
-                Remove preview
+                {t.detail.removePreview}
               </button>
             )}
           </div>
@@ -317,7 +319,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
         <div className="min-w-0 space-y-5">
           <div className="flex flex-wrap gap-2">
             <Button onClick={handleOpenFolder} disabled={!hasPath || missing || busy === "folder"} variant="secondary">
-              <FolderOpen /> {busy === "folder" ? "Opening…" : "Open folder"}
+              <FolderOpen /> {busy === "folder" ? t.detail.opening : t.detail.openFolder}
             </Button>
             {asset.booth_url && (
               <Button asChild className="bg-red-700 text-white hover:bg-red-600">
@@ -332,7 +334,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
             <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
               <div className="mb-1 flex items-center gap-2 text-xs">
                 <span className={missing ? "text-amber-700 dark:text-amber-300" : "text-emerald-600 dark:text-emerald-400"}>
-                  ● {missing ? "Missing from disk" : "On disk"}
+                  ● {missing ? t.detail.missingFromDisk : t.detail.onDisk}
                 </span>
               </div>
               <div className="select-all break-all font-mono text-xs text-muted-foreground">{asset.local_path}</div>
@@ -340,13 +342,13 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
           )}
 
           {asset.description && (
-            <Section title="Description">
+            <Section title={t.detail.description}>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{asset.description}</p>
             </Section>
           )}
 
           {asset.tags.length > 0 && (
-            <Section title="Tags">
+            <Section title={t.detail.tags}>
               <div className="flex flex-wrap gap-1.5">
                 {asset.tags.map((t) => (
                   <Link
@@ -362,7 +364,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
           )}
 
           {(asset.compatible_avatars?.length ?? 0) > 0 && (
-            <Section title="Compatible avatars">
+            <Section title={t.detail.compatibleAvatars}>
               <div className="flex flex-wrap gap-1.5">
                 {asset.compatible_avatars!.map((c) =>
                   c.avatar_asset_id !== null ? (
@@ -377,7 +379,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
                     <span
                       key={c.avatar_name}
                       className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-                      title="Not in your library"
+                      title={t.common.notInLibrary}
                     >
                       <UserRound className="size-3.5" /> {c.avatar_name}
                     </span>
@@ -389,7 +391,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
 
           {isAvatar && (
             <Link href={avatarHref(asset.id)} className="inline-flex items-center gap-1.5 text-sm text-violet-700 dark:text-violet-300 hover:text-violet-800 dark:hover:text-violet-200">
-              <UserRound className="size-4" /> Everything compatible with this avatar →
+              <UserRound className="size-4" /> {t.detail.everythingCompatible}
             </Link>
           )}
 
@@ -400,18 +402,19 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete “{asset.name}”?</AlertDialogTitle>
+            <AlertDialogTitle>{t.detail.deleteTitle(asset.name)}</AlertDialogTitle>
             <AlertDialogDescription>
-              Only the library entry and its preview copy are removed.
+              {t.detail.deleteText}
               {hasPath && (
                 <>
-                  {" "}Your files at <span className="break-all font-mono">{asset.local_path}</span> stay untouched.
+                  {" "}
+                  {t.detail.filesUntouched(<span className="break-all font-mono">{asset.local_path}</span>)}
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy === "delete"}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={busy === "delete"}>{t.common.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -420,7 +423,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
               disabled={busy === "delete"}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              {busy === "delete" ? "Deleting…" : "Delete"}
+              {busy === "delete" ? t.common.deleting : t.common.delete}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

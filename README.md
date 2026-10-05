@@ -70,6 +70,7 @@ Mark which avatars an outfit, hair or accessory fits — by hand, in bulk, or fr
 - One asset can track several folders, archives and versions, each with an *on disk / missing* status
 - **Open folder** jumps straight to the files in Explorer
 - Dark, light or system theme
+- English or Japanese (日本語) interface, picked from the browser language and switchable in the header
 
 ## Your files stay yours
 
@@ -204,7 +205,7 @@ so there the browser talks to a single origin.
 │   ├── app/                 # Library, asset, avatar, review and category pages
 │   ├── components/          # Cards, drawer, forms, scanner and BOOTH panels
 │   │   └── ui/              # shadcn/ui components
-│   └── lib/                 # API client and helpers
+│   └── lib/                 # API client, helpers, i18n (messages/en.tsx, messages/ja.tsx)
 ├── data/                    # Your database, previews and backups (git-ignored)
 ├── docs/                    # API reference and screenshots
 ├── scripts/                 # build-release.ps1, the readme shipped in the zip, icon/
@@ -231,7 +232,8 @@ The REST API is documented in [docs/API.md](docs/API.md). Design decisions and t
 
 Done: asset CRUD, previews, search and tags, category tree, files & versions, avatar compatibility,
 folder scanner with review, BOOTH import, refreshed UI with drawer, bulk edit, avatar pages and themes,
-and a portable one-file release for non-developers (tray app, first-run welcome, update notice).
+a portable one-file release for non-developers (tray app, first-run welcome, update notice),
+and a Japanese interface.
 
 Ideas for later:
 

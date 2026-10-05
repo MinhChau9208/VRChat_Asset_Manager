@@ -7,6 +7,7 @@ import { Asset, getAssetPreviewUrl } from "@/lib/api";
 import { CategoryIcon } from "@/lib/categoryIcon";
 import { cn } from "@/lib/utils";
 import { assetHref } from "@/lib/routes";
+import { useI18n } from "@/lib/i18n";
 
 export type CardSize = "sm" | "md" | "lg";
 export type ViewMode = "grid" | "list";
@@ -45,9 +46,11 @@ export const AssetCard: React.FC<AssetCardProps> = ({
   onToggleSelect,
 }) => {
   const [imageError, setImageError] = useState(false);
+  const { t, categoryName } = useI18n();
   const src = assetPreviewSrc(asset);
   const showImage = Boolean(src && !imageError);
-  const categoryName = asset.category?.name;
+  const category = asset.category?.name;
+  const categoryLabel = category ? categoryName(category) : t.common.uncategorized;
   const missing = Boolean(asset.local_path) && asset.local_file_exists === false;
 
   const handleClick = (e: React.MouseEvent) => {
@@ -69,7 +72,7 @@ export const AssetCard: React.FC<AssetCardProps> = ({
         e.stopPropagation();
         onToggleFavorite(asset.id, !asset.is_favorite);
       }}
-      aria-label={asset.is_favorite ? "Remove from favorites" : "Add to favorites"}
+      aria-label={asset.is_favorite ? t.card.removeFavorite : t.card.addFavorite}
       className={cn(
         "flex size-8 items-center justify-center rounded-full border backdrop-blur-sm transition-all",
         asset.is_favorite
@@ -104,7 +107,7 @@ export const AssetCard: React.FC<AssetCardProps> = ({
           className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
         />
       ) : (
-        <CategoryIcon name={categoryName} className="size-1/3 max-h-12 max-w-12 text-muted-foreground/40" strokeWidth={1.5} />
+        <CategoryIcon name={category} className="size-1/3 max-h-12 max-w-12 text-muted-foreground/40" strokeWidth={1.5} />
       )}
     </div>
   );
@@ -126,11 +129,11 @@ export const AssetCard: React.FC<AssetCardProps> = ({
           <div className="truncate text-sm font-medium text-foreground" title={asset.name}>
             {asset.name}
           </div>
-          <div className="truncate text-xs text-muted-foreground">{asset.author || "Unknown author"}</div>
+          <div className="truncate text-xs text-muted-foreground">{asset.author || t.common.unknownAuthor}</div>
         </div>
         <div className="hidden w-40 items-center gap-1.5 text-xs text-muted-foreground md:flex">
-          <CategoryIcon name={categoryName} className="size-3.5 shrink-0" />
-          <span className="truncate">{asset.category?.name ?? "Uncategorized"}</span>
+          <CategoryIcon name={category} className="size-3.5 shrink-0" />
+          <span className="truncate">{categoryLabel}</span>
         </div>
         <div className="hidden w-48 gap-1 overflow-hidden lg:flex">
           {asset.tags.slice(0, 2).map((t) => (
@@ -140,7 +143,7 @@ export const AssetCard: React.FC<AssetCardProps> = ({
           ))}
         </div>
         {missing && (
-          <span title="Files missing from disk">
+          <span title={t.card.filesMissing}>
             <TriangleAlert className="size-4 text-amber-600 dark:text-amber-400" />
           </span>
         )}
@@ -168,9 +171,9 @@ export const AssetCard: React.FC<AssetCardProps> = ({
         {missing && (
           <span
             className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-xs text-amber-300 backdrop-blur-sm"
-            title="Files missing from disk"
+            title={t.card.filesMissing}
           >
-            <TriangleAlert className="size-3.5" /> Missing
+            <TriangleAlert className="size-3.5" /> {t.card.missing}
           </span>
         )}
       </div>
@@ -187,9 +190,9 @@ export const AssetCard: React.FC<AssetCardProps> = ({
         </h3>
         {size !== "sm" && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CategoryIcon name={categoryName} className="size-3.5 shrink-0" />
+            <CategoryIcon name={category} className="size-3.5 shrink-0" />
             <span className="truncate">
-              {asset.category?.name ?? "Uncategorized"}
+              {categoryLabel}
               {asset.author && <> · {asset.author}</>}
             </span>
           </div>

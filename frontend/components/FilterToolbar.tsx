@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CardSize, ViewMode } from "./AssetCard";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export type SortOption = "recent" | "updated" | "name_asc" | "name_desc";
 export type LocalStatusOption = "all" | "available" | "missing" | "not_specified";
@@ -63,10 +64,11 @@ function Chip({ active, onClick, icon: Icon, children }: { active: boolean; onCl
 }
 
 function ActiveChip({ children, onRemove }: { children: React.ReactNode; onRemove: () => void }) {
+  const { t } = useI18n();
   return (
     <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-foreground">
       {children}
-      <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-foreground" aria-label="Remove filter">
+      <button type="button" onClick={onRemove} className="text-muted-foreground hover:text-foreground" aria-label={t.toolbar.removeFilter}>
         <X className="size-3.5" />
       </button>
     </span>
@@ -97,36 +99,37 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
   selectMode,
   onToggleSelectMode,
 }) => {
+  const { t } = useI18n();
   return (
     <div className="mb-4 flex flex-col gap-2.5 border-b border-border pb-3">
       <div className="flex flex-wrap items-center gap-2">
         <Chip active={isFavoriteOnly} onClick={onToggleFavoriteOnly} icon={Heart}>
-          Favorites
+          {t.toolbar.favorites}
         </Chip>
         <Chip active={hasPreview} onClick={onToggleHasPreview} icon={ImageIcon}>
-          Has preview
+          {t.toolbar.hasPreview}
         </Chip>
         <Chip active={hasBooth} onClick={onToggleHasBooth} icon={ShoppingBag}>
-          Has BOOTH
+          {t.toolbar.hasBooth}
         </Chip>
         <select
           value={localStatus}
           onChange={(e) => onLocalStatusChange(e.target.value as LocalStatusOption)}
           className={selectClass}
-          aria-label="Local files"
+          aria-label={t.toolbar.localFiles}
         >
-          <option value="all">Local files: all</option>
-          <option value="available">On disk</option>
-          <option value="missing">Missing from disk</option>
-          <option value="not_specified">No path set</option>
+          <option value="all">{t.toolbar.localAll}</option>
+          <option value="available">{t.toolbar.onDisk}</option>
+          <option value="missing">{t.toolbar.missingFromDisk}</option>
+          <option value="not_specified">{t.toolbar.noPath}</option>
         </select>
 
         <div className="ml-auto flex items-center gap-2">
-          <select value={sort} onChange={(e) => onSortChange(e.target.value as SortOption)} className={selectClass} aria-label="Sort">
-            <option value="recent">Recently added</option>
-            <option value="updated">Recently updated</option>
-            <option value="name_asc">Name A–Z</option>
-            <option value="name_desc">Name Z–A</option>
+          <select value={sort} onChange={(e) => onSortChange(e.target.value as SortOption)} className={selectClass} aria-label={t.toolbar.sort}>
+            <option value="recent">{t.toolbar.recent}</option>
+            <option value="updated">{t.toolbar.updated}</option>
+            <option value="name_asc">{t.toolbar.nameAsc}</option>
+            <option value="name_desc">{t.toolbar.nameDesc}</option>
           </select>
 
           <ToggleGroup
@@ -135,12 +138,12 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
             size="sm"
             value={view}
             onValueChange={(v) => v && onViewChange(v as ViewMode)}
-            aria-label="View"
+            aria-label={t.toolbar.view}
           >
-            <ToggleGroupItem value="grid" aria-label="Grid view">
+            <ToggleGroupItem value="grid" aria-label={t.toolbar.gridView}>
               <LayoutGrid />
             </ToggleGroupItem>
-            <ToggleGroupItem value="list" aria-label="List view">
+            <ToggleGroupItem value="list" aria-label={t.toolbar.listView}>
               <List />
             </ToggleGroupItem>
           </ToggleGroup>
@@ -152,7 +155,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
               size="sm"
               value={size}
               onValueChange={(v) => v && onSizeChange(v as CardSize)}
-              aria-label="Card size"
+              aria-label={t.toolbar.cardSize}
             >
               <ToggleGroupItem value="sm" className="px-2.5 text-xs">S</ToggleGroupItem>
               <ToggleGroupItem value="md" className="px-2.5 text-xs">M</ToggleGroupItem>
@@ -162,20 +165,20 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
 
           <Button variant={selectMode ? "default" : "outline"} size="sm" onClick={onToggleSelectMode}>
             <CheckSquare />
-            Select
+            {t.toolbar.select}
           </Button>
         </div>
       </div>
 
       {hasActiveFilters && (
         <div className="flex flex-wrap items-center gap-1.5">
-          {searchQuery && <ActiveChip onRemove={onClearSearch}>search: “{searchQuery}”</ActiveChip>}
-          {isFavoriteOnly && <ActiveChip onRemove={onToggleFavoriteOnly}>favorites</ActiveChip>}
-          {hasPreview && <ActiveChip onRemove={onToggleHasPreview}>has preview</ActiveChip>}
-          {hasBooth && <ActiveChip onRemove={onToggleHasBooth}>has BOOTH</ActiveChip>}
+          {searchQuery && <ActiveChip onRemove={onClearSearch}>{t.toolbar.chipSearch(searchQuery)}</ActiveChip>}
+          {isFavoriteOnly && <ActiveChip onRemove={onToggleFavoriteOnly}>{t.toolbar.chipFavorites}</ActiveChip>}
+          {hasPreview && <ActiveChip onRemove={onToggleHasPreview}>{t.toolbar.chipHasPreview}</ActiveChip>}
+          {hasBooth && <ActiveChip onRemove={onToggleHasBooth}>{t.toolbar.chipHasBooth}</ActiveChip>}
           {localStatus !== "all" && (
             <ActiveChip onRemove={() => onLocalStatusChange("all")}>
-              {localStatus === "available" ? "on disk" : localStatus === "missing" ? "missing" : "no path"}
+              {localStatus === "available" ? t.toolbar.chipOnDisk : localStatus === "missing" ? t.toolbar.chipMissing : t.toolbar.chipNoPath}
             </ActiveChip>
           )}
           {selectedTags.map((tag) => (
@@ -184,7 +187,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
             </ActiveChip>
           ))}
           <button type="button" onClick={onClearAllFilters} className="ml-1 text-xs text-muted-foreground hover:text-primary">
-            Clear all
+            {t.toolbar.clearAll}
           </button>
         </div>
       )}

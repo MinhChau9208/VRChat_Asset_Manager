@@ -21,6 +21,7 @@ import (
 	"vrchat-asset-manager/backend/internal/database"
 	"vrchat-asset-manager/backend/internal/desktop"
 	"vrchat-asset-manager/backend/internal/scanner"
+	"vrchat-asset-manager/backend/internal/update"
 	"vrchat-asset-manager/backend/internal/web"
 	"vrchat-asset-manager/backend/migrations"
 )
@@ -31,6 +32,9 @@ var version = "dev"
 // releasePort is the default port of the release build. It is fixed so the
 // browser keeps per-origin settings (theme, card size) between runs.
 const releasePort = "47380"
+
+// githubRepo publishes the releases the update notice compares against.
+const githubRepo = "MinhChau9208/VRChat_Asset_Manager"
 
 // HealthResponse represents the health check response payload.
 type HealthResponse struct {
@@ -293,6 +297,9 @@ func main() {
 
 	// BOOTH metadata import routes (network access only on user action)
 	booth.NewHandler(booth.NewService(db.DB, booth.NewClient(db.DB), assetRepo, previewsDir)).RegisterRoutes(mux)
+
+	// "New version available" notice (tagged release builds only)
+	update.NewChecker(version, githubRepo).RegisterRoutes(mux)
 
 	// Release build: the same server also serves the UI.
 	if release {

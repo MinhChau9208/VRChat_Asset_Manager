@@ -771,3 +771,17 @@ export interface BulkUpdateInput {
 export function bulkUpdateAssets(input: BulkUpdateInput): Promise<{ updated: number }> {
   return sendJSON("POST", "/api/assets/bulk", input, "Bulk update failed");
 }
+
+export interface VersionInfo {
+  version: string;
+  latest?: string;
+  url?: string;
+  update_available: boolean;
+}
+
+/** Running version and, for release builds, whether a newer release exists. */
+export async function getVersionInfo(): Promise<VersionInfo> {
+  const res = await fetch(`${getApiBaseUrl()}/api/version`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch version`);
+  return res.json();
+}

@@ -7,7 +7,7 @@ Errors are returned as `{"error": "message"}` with a matching HTTP status.
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/health` | Server health check → `{"status":"ok"}` |
+| `GET` | `/health` | Server health check → `{"status":"ok","version":"…"}` |
 | `GET` | `/api/health/db` | SQLite connectivity |
 
 ## Assets

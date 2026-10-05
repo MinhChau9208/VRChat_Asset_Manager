@@ -861,6 +861,63 @@ suggested and saved in a few clicks.
 
 ---
 
+## Milestone 11 — Packaging for non-developers
+
+Goal: someone who has never opened VS Code or a terminal can download a zip,
+double-click one program and use the app.
+
+Approach: **one Go executable that embeds the frontend**. No Electron, Wails,
+Tauri or Docker; the architecture (Go API + Next.js UI + SQLite) stays the same.
+
+    VRChatAssetManager/
+        VRChatAssetManager.exe   ← double-click
+        data/                    ← created on first run (app.db, previews/, backups/)
+
+Development keeps working exactly as before (`npm run dev` + `go run .`).
+
+### Phase 1 — Portable build (this milestone)
+
+Frontend:
+
+- Static export (`output: "export"`); every page is already a client component
+- Dynamic routes become query routes: `/assets/[id]` → `/assets?id=…`,
+  `/avatars/[id]` → `/avatars?id=…`
+- API base URL is relative when built for release (same origin as the UI)
+
+Backend:
+
+- `release` build tag embeds the exported UI (`internal/web`) and serves it at `/`;
+  without the tag nothing changes
+- Listens on `127.0.0.1` only, never on the LAN (open-folder / pick-folder are
+  local actions)
+- Release build: data lives in `data/` next to the executable, a fixed port
+  (so browser settings like theme survive restarts), the default browser opens
+  automatically
+- Single instance: if the app is already running, open the browser and exit
+- Errors stay readable: the console window waits for Enter before closing
+
+Build:
+
+- `scripts/build-release.ps1` → `dist/VRChatAssetManager-<version>.zip`
+- Version shown in the startup banner and `GET /health`
+
+### Phase 2 — Later
+
+- Tray icon (Open / Open data folder / Quit), hidden console, log file
+- First-run welcome: choose library root → Scan → Review
+- "New version available" notice from GitHub Releases (notify only, no auto-update)
+- GitHub Actions release on tag; optional Inno Setup installer
+  (data then moves to `%LOCALAPPDATA%\VRChatAssetManager`)
+- Replace the PowerShell folder picker with a native dialog call
+  (fewer antivirus false positives)
+
+Success condition:
+
+On a Windows machine without Go or Node, unzipping the release and
+double-clicking `VRChatAssetManager.exe` opens a working library in the browser.
+
+---
+
 # 16. Future roadmap
 
 Potential features:
@@ -1137,7 +1194,9 @@ That is the long-term direction.
 
 Milestones 0–10 are done (see README "Milestone Status").
 
-Candidates for what comes next are in section 16 (Future roadmap): collections,
+Current: Milestone 11 — packaging for non-developers (phase 1).
+
+Candidates after that are in section 16 (Future roadmap): collections,
 duplicate detection, avatar builds, optional Google Drive backup.
 
 One milestone at a time; every automated guess stays a suggestion the user confirms.

@@ -463,7 +463,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({
             type="button"
             onClick={handleFetchBooth}
             disabled={!boothUrl.trim() || isFetchingBooth}
-            className="px-3 py-2 rounded-lg bg-red-100 dark:bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold border border-red-300 dark:border-red-700/60 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-2 rounded-lg bg-red-600 dark:bg-red-800/80 hover:bg-red-700 text-white text-xs font-semibold border border-red-700 dark:border-red-700/60 transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             title={t.form.fetchTitle}
           >
             {isFetchingBooth ? t.form.fetching : t.form.fetch}

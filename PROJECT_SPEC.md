@@ -861,6 +861,69 @@ suggested and saved in a few clicks.
 
 ---
 
+## Milestone 11 — Packaging for non-developers
+
+Goal: someone who has never opened VS Code or a terminal can download a zip,
+double-click one program and use the app.
+
+Approach: **one Go executable that embeds the frontend**. No Electron, Wails,
+Tauri or Docker; the architecture (Go API + Next.js UI + SQLite) stays the same.
+
+    VRChatAssetManager/
+        VRChatAssetManager.exe   ← double-click
+        data/                    ← created on first run (app.db, previews/, backups/)
+
+Development keeps working exactly as before (`npm run dev` + `go run .`).
+
+### Phase 1 — Portable build (this milestone)
+
+Frontend:
+
+- Static export (`output: "export"`); every page is already a client component
+- Dynamic routes become query routes: `/assets/[id]` → `/assets?id=…`,
+  `/avatars/[id]` → `/avatars?id=…`
+- API base URL is relative when built for release (same origin as the UI)
+
+Backend:
+
+- `release` build tag embeds the exported UI (`internal/web`) and serves it at `/`;
+  without the tag nothing changes
+- Listens on `127.0.0.1` only, never on the LAN (open-folder / pick-folder are
+  local actions)
+- Release build: data lives in `data/` next to the executable, a fixed port
+  (so browser settings like theme survive restarts), the default browser opens
+  automatically
+- Single instance: if the app is already running, open the browser and exit
+- Errors stay readable: the console window waits for Enter before closing
+
+Build:
+
+- `scripts/build-release.ps1` → `dist/VRChatAssetManager-<version>.zip`
+- Version shown in the startup banner and `GET /health`
+
+### Phase 2 — Desktop polish (done)
+
+- Tray icon (click: open; menu: Open / Open data folder / Quit), no console
+  window (`-H windowsgui`), log in `data/logs/app.log`, errors in a message box
+- App icon and version details in the exe (`scripts/icon/`, go-winres)
+- Native Windows folder picker (`IFileOpenDialog`) instead of PowerShell
+- First-run welcome on an empty library: pick folder → Scan → Review
+- `GET /api/version` + "Update x.y.z" button when GitHub has a newer release.
+  Only builds with a release version check (never `dev` or a commit hash),
+  at most every 6 hours; it only links to the release page
+- GitHub Actions: pushing a `v*` tag builds the zip and publishes a Release
+
+Not done (only if needed): Inno Setup installer. With an installer the data
+would move to `%LOCALAPPDATA%\VRChatAssetManager`, since Program Files is
+read-only.
+
+Success condition:
+
+On a Windows machine without Go or Node, unzipping the release and
+double-clicking `VRChatAssetManager.exe` opens a working library in the browser.
+
+---
+
 # 16. Future roadmap
 
 Potential features:
@@ -1137,7 +1200,9 @@ That is the long-term direction.
 
 Milestones 0–10 are done (see README "Milestone Status").
 
-Candidates for what comes next are in section 16 (Future roadmap): collections,
+Current: Milestone 11 — packaging for non-developers (phase 1).
+
+Candidates after that are in section 16 (Future roadmap): collections,
 duplicate detection, avatar builds, optional Google Drive backup.
 
 One milestone at a time; every automated guess stays a suggestion the user confirms.

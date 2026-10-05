@@ -52,6 +52,7 @@ import { AssetFilesPanel } from "./AssetFilesPanel";
 import { PreviewDropzone } from "./PreviewDropzone";
 import { assetPreviewSrc } from "./AssetCard";
 import { cn } from "@/lib/utils";
+import { assetHref, avatarHref } from "@/lib/routes";
 
 interface AssetDetailProps {
   assetId: number | string;
@@ -268,14 +269,14 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
             <DropdownMenuContent align="end">
               {variant === "drawer" && (
                 <DropdownMenuItem asChild>
-                  <Link href={`/assets/${asset.id}`}>
+                  <Link href={assetHref(asset.id)}>
                     <Maximize2 /> Open full page
                   </Link>
                 </DropdownMenuItem>
               )}
               {isAvatar && (
                 <DropdownMenuItem asChild>
-                  <Link href={`/avatars/${asset.id}`}>
+                  <Link href={avatarHref(asset.id)}>
                     <UserRound /> Avatar page
                   </Link>
                 </DropdownMenuItem>
@@ -367,7 +368,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
                   c.avatar_asset_id !== null ? (
                     <Link
                       key={c.avatar_name}
-                      href={`/avatars/${c.avatar_asset_id}`}
+                      href={avatarHref(c.avatar_asset_id)}
                       className="inline-flex items-center gap-1 rounded-md border border-violet-300 dark:border-violet-800/70 bg-violet-100 dark:bg-violet-950/40 px-2 py-0.5 text-xs text-violet-800 dark:text-violet-200 hover:border-violet-500"
                     >
                       <UserRound className="size-3.5" /> {c.avatar_name}
@@ -387,7 +388,7 @@ export function AssetDetail({ assetId, variant, onChanged, onDeleted }: AssetDet
           )}
 
           {isAvatar && (
-            <Link href={`/avatars/${asset.id}`} className="inline-flex items-center gap-1.5 text-sm text-violet-700 dark:text-violet-300 hover:text-violet-800 dark:hover:text-violet-200">
+            <Link href={avatarHref(asset.id)} className="inline-flex items-center gap-1.5 text-sm text-violet-700 dark:text-violet-300 hover:text-violet-800 dark:hover:text-violet-200">
               <UserRound className="size-4" /> Everything compatible with this avatar →
             </Link>
           )}

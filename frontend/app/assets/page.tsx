@@ -1,14 +1,15 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { AssetDetail } from "@/components/AssetDetail";
 
-export default function AssetDetailPage() {
-  const params = useParams();
+function AssetDetailView() {
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const id = params?.id as string;
+  const id = searchParams.get("id") ?? "";
 
   return (
     <main className="min-h-screen p-4 sm:p-6 md:p-8">
@@ -22,5 +23,13 @@ export default function AssetDetailPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function AssetDetailPage() {
+  return (
+    <Suspense>
+      <AssetDetailView />
+    </Suspense>
   );
 }

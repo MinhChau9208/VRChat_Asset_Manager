@@ -7,6 +7,7 @@ import { Asset, Category, buildCategoryTree } from "@/lib/api";
 import { categoryIcon } from "@/lib/categoryIcon";
 import { assetPreviewSrc } from "./AssetCard";
 import { cn } from "@/lib/utils";
+import { avatarHref } from "@/lib/routes";
 
 interface SidebarProps {
   categories: Category[];
@@ -145,7 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               return (
                 <Link
                   key={a.id}
-                  href={`/avatars/${a.id}`}
+                  href={avatarHref(a.id)}
                   className="flex shrink-0 items-center gap-2.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                 >
                   <span className="size-7 shrink-0 overflow-hidden rounded-full border border-border bg-muted">

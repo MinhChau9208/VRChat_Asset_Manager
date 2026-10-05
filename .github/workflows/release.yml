@@ -1,0 +1,45 @@
+# Pushing a version tag builds the portable zip and publishes a GitHub Release:
+#
+#   git tag v1.0.0
+#   git push origin v1.0.0
+#
+# The app's "Update available" notice compares against these releases.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Test backend
+        working-directory: backend
+        run: go test ./...
+
+      - name: Build release zip
+        shell: pwsh
+        run: ./scripts/build-release.ps1 -Version "$env:GITHUB_REF_NAME"
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$env:GITHUB_REF_NAME" (Get-ChildItem dist/*.zip).FullName --title "$env:GITHUB_REF_NAME" --generate-notes

@@ -11,6 +11,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Header } from "@/components/Header";
 import { Sidebar } from "@/components/Sidebar";
 import { AssetGrid } from "@/components/AssetGrid";
+import { WelcomePanel } from "@/components/WelcomePanel";
 import { AssetDetail } from "@/components/AssetDetail";
 import { BulkActionBar } from "@/components/BulkActionBar";
 import { CardSize, ViewMode } from "@/components/AssetCard";
@@ -486,6 +487,7 @@ function LibraryView() {
             selectable={selectMode}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelected}
+            welcome={stats?.total === 0 ? <WelcomePanel draftCount={stats.drafts} /> : undefined}
           />
         </main>
       </div>

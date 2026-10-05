@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ExternalLink, Info, Pencil, ShoppingBag, UserRound } from "lucide-react";
 import { Asset, Category, buildCategoryTree, getAssetByID, getAssets, getCategories, toggleAssetFavorite } from "@/lib/api";
 import { CategoryIcon } from "@/lib/categoryIcon";
@@ -34,10 +34,17 @@ function groupByCategory(assets: Asset[], categories: Category[]): Group[] {
   return order.filter((name) => groups.has(name)).map((name) => ({ name, assets: groups.get(name)! }));
 }
 
-export default function AvatarPage() {
-  const params = useParams();
-  const id = Number(params?.id);
+function AvatarRoute() {
+  const id = Number(useSearchParams().get("id"));
   return <AvatarView key={id} id={id} />;
+}
+
+export default function AvatarPage() {
+  return (
+    <Suspense>
+      <AvatarRoute />
+    </Suspense>
+  );
 }
 
 function AvatarView({ id }: { id: number }) {

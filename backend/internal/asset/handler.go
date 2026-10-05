@@ -2,11 +2,11 @@ package asset
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -16,7 +16,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
+
+	"vrchat-asset-manager/backend/internal/desktop"
 )
 
 // OpenerFunc defines the function signature for opening paths in the OS file explorer.
@@ -855,25 +856,10 @@ func (h *Handler) CreateTag(w http.ResponseWriter, r *http.Request) {
 
 // PickFolder handles POST /api/filesystem/pick-folder
 func (h *Handler) PickFolder(w http.ResponseWriter, r *http.Request) {
-	if runtime.GOOS != "windows" {
-		writeJSON(w, http.StatusOK, map[string]string{"path": ""})
-		return
+	// Empty path when cancelled, on failure, or outside Windows.
+	selectedPath, err := desktop.PickFolder("Select VRChat Asset Folder")
+	if err != nil {
+		log.Printf("Folder picker failed: %v", err)
 	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
-	defer cancel()
-
-	psScript := `Add-Type -AssemblyName System.Windows.Forms; $f = New-Object System.Windows.Forms.FolderBrowserDialog; $f.ShowNewFolderButton = $false; $f.Description = 'Select VRChat Asset Folder'; if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($f.SelectedPath) }`
-
-	cmd := exec.CommandContext(ctx, "powershell", "-NoProfile", "-NonInteractive", "-Command", psScript)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-
-	if err := cmd.Run(); err != nil {
-		writeJSON(w, http.StatusOK, map[string]string{"path": ""})
-		return
-	}
-
-	selectedPath := strings.TrimSpace(out.String())
 	writeJSON(w, http.StatusOK, map[string]string{"path": selectedPath})
 }

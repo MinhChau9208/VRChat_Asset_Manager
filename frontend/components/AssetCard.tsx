@@ -6,6 +6,7 @@ import { Check, Heart, TriangleAlert } from "lucide-react";
 import { Asset, getAssetPreviewUrl } from "@/lib/api";
 import { CategoryIcon } from "@/lib/categoryIcon";
 import { cn } from "@/lib/utils";
+import { assetHref } from "@/lib/routes";
 
 export type CardSize = "sm" | "md" | "lg";
 export type ViewMode = "grid" | "list";
@@ -112,7 +113,7 @@ export const AssetCard: React.FC<AssetCardProps> = ({
   if (view === "list") {
     return (
       <Link
-        href={`/assets/${asset.id}`}
+        href={assetHref(asset.id)}
         onClick={handleClick}
         className={cn(
           "group flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors",
@@ -151,7 +152,7 @@ export const AssetCard: React.FC<AssetCardProps> = ({
   // ---- Grid card ----
   return (
     <Link
-      href={`/assets/${asset.id}`}
+      href={assetHref(asset.id)}
       onClick={handleClick}
       className={cn(
         "group flex flex-col overflow-hidden rounded-xl border bg-card/50 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",

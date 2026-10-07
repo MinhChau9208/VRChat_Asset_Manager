@@ -127,10 +127,6 @@ To make that zip yourself (needs Go and Node.js):
 .\scripts\build-release.ps1 -Version 1.0.0   # -> dist\VRChatAssetManager-1.0.0.zip
 ```
 
-Or let GitHub do it: pushing a tag such as `v1.0.0` runs
-[.github/workflows/release.yml](.github/workflows/release.yml), which publishes a Release with the zip.
-Running apps show an "Update" button when a newer release exists.
-
 The rest of this section is for running from source.
 
 ### Requirements

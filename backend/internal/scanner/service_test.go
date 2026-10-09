@@ -352,3 +352,56 @@ func TestNewFilesFindTheirExistingAsset(t *testing.T) {
 		t.Errorf("only drafts can be merged, got %d", code)
 	}
 }
+
+func TestCorrectedBoothLinksAreNotSuggestedAgain(t *testing.T) {
+	e := setup(t)
+	j := func(parts ...string) string { return filepath.Join(append([]string{e.lib}, parts...)...) }
+	readme := func(id string) []byte { return []byte("Requires https://booth.pm/ja/items/" + id + "\n") }
+	write(t, j("Accessory", "Ribbon", "Ribbon.unitypackage"), []byte("x"))
+	write(t, j("Accessory", "Ribbon", "readme.txt"), readme("7000001"))
+
+	cfg := scanner.DefaultConfig()
+	cfg.Roots = []string{e.lib}
+	e.do(t, http.MethodPut, "/api/scanner/config", cfg, nil)
+	e.do(t, http.MethodPost, "/api/scanner/scan", nil, nil)
+
+	ribbon := e.drafts(t)["Ribbon"]
+	if ribbon.BoothURL != "https://booth.pm/ja/items/7000001" {
+		t.Fatalf("the only readme link should be picked first, got %q", ribbon.BoothURL)
+	}
+	// The user corrects it: 7000001 was a requirement, not the ribbon.
+	payload := map[string]any{"name": ribbon.Name, "category_id": ribbon.CategoryID, "local_path": ribbon.LocalPath,
+		"booth_url": "https://booth.pm/ja/items/7000002"}
+	if code := e.do(t, http.MethodPut, "/api/assets/"+strconv.FormatInt(ribbon.ID, 10), payload, nil); code != http.StatusOK {
+		t.Fatalf("update failed: %d", code)
+	}
+
+	// Two more items: one links the corrected id, one links the ribbon's real id.
+	write(t, j("Hair", "Bob", "Bob.unitypackage"), []byte("x"))
+	write(t, j("Hair", "Bob", "readme.txt"), readme("7000001"))
+	write(t, j("Hair", "Bun", "Bun.unitypackage"), []byte("x"))
+	write(t, j("Hair", "Bun", "readme.txt"), readme("7000002"))
+	e.do(t, http.MethodPost, "/api/scanner/scan", nil, nil)
+
+	drafts := e.drafts(t)
+	if got := drafts["Bob"].BoothURL; got != "" {
+		t.Errorf("a corrected id must not be picked again, got %q", got)
+	}
+	if got := drafts["Bun"].BoothURL; got != "" {
+		t.Errorf("a readme link to another library item is not this item, got %q", got)
+	}
+	var saved scanner.Config
+	e.do(t, http.MethodGet, "/api/scanner/config", nil, &saved)
+	if !strings.Contains(strings.Join(saved.KnownDependencies, ","), "7000001") {
+		t.Errorf("the corrected id should be learned as a dependency, got %v", saved.KnownDependencies)
+	}
+
+	// Learned once: removing it from Settings sticks.
+	saved.KnownDependencies = []string{"3087170"}
+	e.do(t, http.MethodPut, "/api/scanner/config", saved, nil)
+	e.do(t, http.MethodPost, "/api/scanner/scan", nil, nil)
+	e.do(t, http.MethodGet, "/api/scanner/config", nil, &saved)
+	if len(saved.KnownDependencies) != 1 {
+		t.Errorf("a removed dependency must not be learned again, got %v", saved.KnownDependencies)
+	}
+}

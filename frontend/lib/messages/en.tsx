@@ -365,7 +365,7 @@ const en = {
     ignore: "Never scan",
     ignoreHelp: "Folder/file names skipped and never read.",
     deps: "Dependency BOOTH ids",
-    depsHelp: "Linked in readmes but never the asset (lilToon…).",
+    depsHelp: "Linked in readmes but never the asset (lilToon…). A suggested link you replace is added here on the next scan.",
     mapping: "Folder name → category",
     folder: "folder",
     missingCategory: (name: string) => `${name} (missing)`,

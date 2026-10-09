@@ -361,7 +361,7 @@ const ja: Messages = {
     ignore: "スキャンしない",
     ignoreHelp: "スキップして中身を読まないフォルダ名・ファイル名。",
     deps: "依存アセットの BOOTH ID",
-    depsHelp: "readme にリンクがあっても、アセット本体ではないもの（lilToon など）。",
+    depsHelp: "readme にリンクがあっても、アセット本体ではないもの（lilToon など）。提案されたリンクを差し替えると、次回のスキャンでここに追加されます。",
     mapping: "フォルダ名 → カテゴリ",
     folder: "フォルダ",
     missingCategory: (name: string) => `${name}（存在しません）`,

@@ -77,3 +77,59 @@ func TestSameNameInDifferentCategoriesStaysApart(t *testing.T) {
 		"Shoes: Shoes/Sneakers, Clothes/LEGACY/Sneakers.zip",
 	)
 }
+
+func TestNestedAssetsAreFoundWhereTheirPartsAre(t *testing.T) {
+	root := tree(t,
+		// A shop folder holding two items: each item is an asset.
+		"Clothes/ShopA/DressX/Prefab/DressX.prefab",
+		"Clothes/ShopA/DressX/Textures/",
+		"Clothes/ShopA/BootsY/BootsY.unitypackage",
+		// A wrapper folder around a single item is the asset.
+		"Facials/Cute_Facial/だるラボ_表情セット/set.unitypackage",
+		// Numbered part folders and per-version / per-avatar children belong to the parent.
+		"Models/Savarum/01Unitypackage/Savarum.unitypackage",
+		"Models/Savarum/02FBX/Body.fbx",
+		"Models/Kipfel/Kipfel.unitypackage",
+		"Clothes/Ribbon_Dress/Kipfel/Dress.prefab",
+		"Clothes/Ribbon_Dress/for Savarum/Dress.prefab",
+		"Hair/TwinTail/1.0.0/Hair.unitypackage",
+		"Hair/TwinTail/1.1.0/Hair.unitypackage",
+		// A folder with only a readme is still an asset.
+		"Gimmick/4460917 Piano/readme.txt",
+	)
+	expectPlan(t, planned(t, root, PlanOptions{}),
+		"Clothes: Clothes/ShopA/DressX",
+		"Clothes: Clothes/ShopA/BootsY",
+		"Expression: Facials/Cute_Facial",
+		"Avatar: Models/Savarum",
+		"Avatar: Models/Kipfel",
+		"Clothes: Clothes/Ribbon_Dress",
+		"Hair: Hair/TwinTail",
+		"Gimmick: Gimmick/4460917 Piano",
+	)
+}
+
+func TestUnityProjectOnlyAssetsFolderIsScanned(t *testing.T) {
+	root := tree(t,
+		"Projects/MyAvatar/Assets/ShopA/DressX/Prefab/DressX.prefab",
+		"Projects/MyAvatar/Assets/ShopA/BootsY/Prefab/BootsY.prefab",
+		"Projects/MyAvatar/Assets/Kipfel/Prefab/Kipfel.prefab",
+		"Projects/MyAvatar/Assets/Scenes/Main.unity",
+		"Projects/MyAvatar/Assets/Editor/Tool.cs",
+		"Projects/MyAvatar/Packages/com.vrchat.avatars/package.json",
+		"Projects/MyAvatar/Library/PackageCache/x/",
+		"Projects/MyAvatar/ProjectSettings/ProjectSettings.asset",
+	)
+	expectPlan(t, planned(t, root, PlanOptions{}),
+		": Projects/MyAvatar/Assets/ShopA/DressX",
+		": Projects/MyAvatar/Assets/ShopA/BootsY",
+		": Projects/MyAvatar/Assets/Kipfel",
+	)
+
+	// A root that is itself a Unity project works the same way.
+	project := filepath.Join(root, "Projects", "MyAvatar")
+	got := planned(t, project, PlanOptions{})
+	if len(got) != 3 {
+		t.Errorf("project as root: expected 3 drafts, got %v", got)
+	}
+}

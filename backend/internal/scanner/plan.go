@@ -150,40 +150,50 @@ func (p *planner) group() []*Group {
 		g.Members = append(g.Members, Member{Path: e.path, Kind: e.kind, Version: version})
 	}
 
-	for _, e := range p.entries {
-		if e.isFile {
-			continue
-		}
+	// fit finds the folder group an entry belongs to, or starts a new group.
+	fit := func(e entry) *Group {
 		key := matchKey(filepath.Base(e.path))
-		g := get(key, e.category)
-		if len(g.Members) == 0 {
-			folders[key] = append(folders[key], g)
-		}
-		addMember(g, e)
-	}
-	for _, e := range p.entries {
-		if !e.isFile {
-			continue
-		}
-		key := matchKey(filepath.Base(e.path))
-		var target *Group
 		var crossing []*Group
 		for _, g := range folders[key] {
 			if strings.EqualFold(g.Category, e.category) {
-				target = g
-				break
+				return g
 			}
 			if !crossesAvatarLine(g.Category, e.category) {
 				crossing = append(crossing, g)
 			}
 		}
-		if target == nil && len(crossing) == 1 {
-			target = crossing[0]
+		if len(crossing) == 1 {
+			return crossing[0]
 		}
-		if target == nil {
-			target = get(key, e.category)
+		g := get(key, e.category)
+		if !e.isFile && len(g.Members) == 0 {
+			folders[key] = append(folders[key], g)
 		}
-		addMember(target, e)
+		return g
+	}
+
+	// Categorized folders first, then loose folders at the root (they join a
+	// categorized folder of the same name), then archives and packages.
+	for _, pass := range []func(entry) bool{
+		func(e entry) bool { return !e.isFile && e.category != "" },
+		func(e entry) bool { return !e.isFile && e.category == "" },
+		func(e entry) bool { return e.isFile },
+	} {
+		for _, e := range p.entries {
+			if !pass(e) {
+				continue
+			}
+			if !e.isFile && e.category != "" {
+				key := matchKey(filepath.Base(e.path))
+				g := get(key, e.category)
+				if len(g.Members) == 0 {
+					folders[key] = append(folders[key], g)
+				}
+				addMember(g, e)
+				continue
+			}
+			addMember(fit(e), e)
+		}
 	}
 	return groups
 }

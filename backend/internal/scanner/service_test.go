@@ -254,3 +254,154 @@ func urlQuery(s string) string {
 	r := strings.NewReplacer("%", "%25", " ", "%20", "&", "%26", "+", "%2B", "#", "%23")
 	return r.Replace(s)
 }
+
+func TestRegisteredFoldersGuideTheScan(t *testing.T) {
+	e := setup(t)
+	j := func(parts ...string) string { return filepath.Join(append([]string{e.lib}, parts...)...) }
+	// A shop folder with two items, and a wrapper folder around one item.
+	write(t, j("Clothes", "ShopB", "DressX", "Prefab", "DressX.prefab"), []byte("x"))
+	write(t, j("Clothes", "ShopB", "DressY", "Prefab", "DressY.prefab"), []byte("x"))
+	write(t, j("Accessory", "Halo", "Halo_Main", "Halo.prefab"), []byte("x"))
+	write(t, j("Accessory", "Halo", "Halo_Main", "Textures", "halo.png"), pngBytes)
+
+	// The user registers the whole shop folder as one asset, and the inner
+	// Halo folder (not the wrapper) by hand.
+	for _, path := range []string{j("Clothes", "ShopB"), j("Accessory", "Halo", "Halo_Main")} {
+		if code := e.do(t, http.MethodPost, "/api/assets", map[string]any{"name": filepath.Base(path), "local_path": path}, nil); code != http.StatusCreated {
+			t.Fatalf("create %s: %d", path, code)
+		}
+	}
+
+	cfg := scanner.DefaultConfig()
+	cfg.Roots = []string{e.lib}
+	e.do(t, http.MethodPut, "/api/scanner/config", cfg, nil)
+	var result scanner.Result
+	e.do(t, http.MethodPost, "/api/scanner/scan", nil, &result)
+
+	for name, d := range e.drafts(t) {
+		if strings.Contains(d.LocalPath, "ShopB") || strings.Contains(d.LocalPath, "Halo") {
+			t.Errorf("registered folders must not come back as drafts, got %q at %s", name, d.LocalPath)
+		}
+	}
+	if result.AlreadyLinked != 2 {
+		t.Errorf("both registered folders should count as already linked, got %+v", result)
+	}
+}
+
+func TestNewFilesFindTheirExistingAsset(t *testing.T) {
+	e := setup(t)
+	j := func(parts ...string) string { return filepath.Join(append([]string{e.lib}, parts...)...) }
+	clothes, accessory := e.categoryID(t, "Clothes"), e.categoryID(t, "Accessory")
+	create := func(body map[string]any) asset.Asset {
+		var a asset.Asset
+		if code := e.do(t, http.MethodPost, "/api/assets", body, &a); code != http.StatusCreated {
+			t.Fatalf("create %v: %d", body, code)
+		}
+		return a
+	}
+
+	// Renamed from BOOTH; its old version folder has since been deleted.
+	dress := create(map[string]any{"name": "リボンドレス", "category_id": clothes, "local_path": j("Clothes", "Ribbon_Dress_1.0")})
+	write(t, j("Clothes", "Ribbon_Dress_1.1", "Dress.unitypackage"), []byte("x"))
+	// Registered by BOOTH link only, now downloaded under a different name.
+	wings := create(map[string]any{"name": "Angel Wings", "category_id": accessory, "booth_url": "https://booth.pm/ja/items/1234567"})
+	write(t, j("Accessory", "1234567 tenshi_hane", "Wings.unitypackage"), []byte("x"))
+	// Only the display name matches: suggested, not linked.
+	halo := create(map[string]any{"name": "Halo", "category_id": accessory})
+	write(t, j("Accessory", "Halo", "Halo.unitypackage"), []byte("x"))
+	write(t, j("Accessory", "Halo", "main.png"), pngBytes)
+
+	cfg := scanner.DefaultConfig()
+	cfg.Roots = []string{e.lib}
+	e.do(t, http.MethodPut, "/api/scanner/config", cfg, nil)
+	var result scanner.Result
+	e.do(t, http.MethodPost, "/api/scanner/scan", nil, &result)
+
+	attached := map[int64]string{}
+	for _, a := range result.Attached {
+		attached[a.AssetID] = a.Path
+	}
+	if !strings.HasSuffix(attached[dress.ID], "Ribbon_Dress_1.1") {
+		t.Errorf("new dress version should attach to the renamed asset, got %+v", result.Attached)
+	}
+	if !strings.HasSuffix(attached[wings.ID], "1234567 tenshi_hane") {
+		t.Errorf("BOOTH id in the folder name should attach to the wings, got %+v", result.Attached)
+	}
+
+	drafts := e.drafts(t)
+	haloDraft, ok := drafts["Halo"]
+	if !ok {
+		t.Fatalf("Halo should stay a draft, got %v", keys(drafts))
+	}
+	if !strings.Contains(string(haloDraft.ScanInfo), `"merge_candidates":[{"id":`+strconv.FormatInt(halo.ID, 10)) {
+		t.Errorf("Halo draft should suggest the existing Halo, got %s", haloDraft.ScanInfo)
+	}
+
+	// Merging moves the files and preview into the existing asset.
+	var merged asset.Asset
+	if code := e.do(t, http.MethodPost, "/api/scanner/merge", map[string]any{"draft_id": haloDraft.ID, "target_id": halo.ID}, &merged); code != http.StatusOK {
+		t.Fatalf("merge failed: %d", code)
+	}
+	if len(merged.Files) != 1 || merged.LocalPath != j("Accessory", "Halo") || merged.PreviewPath == "" {
+		t.Errorf("merged asset: files=%+v local=%q preview=%q", merged.Files, merged.LocalPath, merged.PreviewPath)
+	}
+	if code := e.do(t, http.MethodGet, "/api/assets/"+strconv.FormatInt(haloDraft.ID, 10), nil, nil); code != http.StatusNotFound {
+		t.Errorf("merged draft should be gone, got %d", code)
+	}
+	if code := e.do(t, http.MethodPost, "/api/scanner/merge", map[string]any{"draft_id": dress.ID, "target_id": halo.ID}, nil); code != http.StatusBadRequest {
+		t.Errorf("only drafts can be merged, got %d", code)
+	}
+}
+
+func TestCorrectedBoothLinksAreNotSuggestedAgain(t *testing.T) {
+	e := setup(t)
+	j := func(parts ...string) string { return filepath.Join(append([]string{e.lib}, parts...)...) }
+	readme := func(id string) []byte { return []byte("Requires https://booth.pm/ja/items/" + id + "\n") }
+	write(t, j("Accessory", "Ribbon", "Ribbon.unitypackage"), []byte("x"))
+	write(t, j("Accessory", "Ribbon", "readme.txt"), readme("7000001"))
+
+	cfg := scanner.DefaultConfig()
+	cfg.Roots = []string{e.lib}
+	e.do(t, http.MethodPut, "/api/scanner/config", cfg, nil)
+	e.do(t, http.MethodPost, "/api/scanner/scan", nil, nil)
+
+	ribbon := e.drafts(t)["Ribbon"]
+	if ribbon.BoothURL != "https://booth.pm/ja/items/7000001" {
+		t.Fatalf("the only readme link should be picked first, got %q", ribbon.BoothURL)
+	}
+	// The user corrects it: 7000001 was a requirement, not the ribbon.
+	payload := map[string]any{"name": ribbon.Name, "category_id": ribbon.CategoryID, "local_path": ribbon.LocalPath,
+		"booth_url": "https://booth.pm/ja/items/7000002"}
+	if code := e.do(t, http.MethodPut, "/api/assets/"+strconv.FormatInt(ribbon.ID, 10), payload, nil); code != http.StatusOK {
+		t.Fatalf("update failed: %d", code)
+	}
+
+	// Two more items: one links the corrected id, one links the ribbon's real id.
+	write(t, j("Hair", "Bob", "Bob.unitypackage"), []byte("x"))
+	write(t, j("Hair", "Bob", "readme.txt"), readme("7000001"))
+	write(t, j("Hair", "Bun", "Bun.unitypackage"), []byte("x"))
+	write(t, j("Hair", "Bun", "readme.txt"), readme("7000002"))
+	e.do(t, http.MethodPost, "/api/scanner/scan", nil, nil)
+
+	drafts := e.drafts(t)
+	if got := drafts["Bob"].BoothURL; got != "" {
+		t.Errorf("a corrected id must not be picked again, got %q", got)
+	}
+	if got := drafts["Bun"].BoothURL; got != "" {
+		t.Errorf("a readme link to another library item is not this item, got %q", got)
+	}
+	var saved scanner.Config
+	e.do(t, http.MethodGet, "/api/scanner/config", nil, &saved)
+	if !strings.Contains(strings.Join(saved.KnownDependencies, ","), "7000001") {
+		t.Errorf("the corrected id should be learned as a dependency, got %v", saved.KnownDependencies)
+	}
+
+	// Learned once: removing it from Settings sticks.
+	saved.KnownDependencies = []string{"3087170"}
+	e.do(t, http.MethodPut, "/api/scanner/config", saved, nil)
+	e.do(t, http.MethodPost, "/api/scanner/scan", nil, nil)
+	e.do(t, http.MethodGet, "/api/scanner/config", nil, &saved)
+	if len(saved.KnownDependencies) != 1 {
+		t.Errorf("a removed dependency must not be learned again, got %v", saved.KnownDependencies)
+	}
+}

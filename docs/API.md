@@ -63,6 +63,7 @@ Errors are returned as `{"error": "message"}` with a matching HTTP status.
 | `POST` | `/api/scanner/scan` | Scan the roots → `{"groups", "created", "attached", "already_linked", "ignored", "warnings", "duration_ms"}` |
 | `POST` | `/api/scanner/accept` | `{"asset_ids": [...]}` turns drafts into library assets |
 | `POST` | `/api/scanner/ignore` | Delete drafts and skip their paths in later scans |
+| `POST` | `/api/scanner/merge` | `{"draft_id", "target_id"}` moves a draft's files into an existing asset (fills its empty BOOTH link and preview, adds compatible avatars) and removes the draft → the updated asset |
 | `GET` | `/api/scanner/ignored` | Ignored paths |
 | `DELETE` | `/api/scanner/ignored?path=` | Scan an ignored path again |
 

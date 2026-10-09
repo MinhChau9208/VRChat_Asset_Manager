@@ -24,7 +24,10 @@ var mediaExts = map[string]bool{".mp3": true, ".wav": true, ".ogg": true, ".flac
 var imageExts = map[string]bool{".png": true, ".jpg": true, ".jpeg": true, ".webp": true}
 
 // Files that mark a folder as an asset (rather than a category folder).
-var assetMarkerExts = map[string]bool{".unitypackage": true, ".fbx": true, ".blend": true, ".psd": true, ".prefab": true}
+var assetMarkerExts = map[string]bool{
+	".unitypackage": true, ".fbx": true, ".blend": true, ".psd": true, ".prefab": true,
+	".mat": true, ".anim": true, ".controller": true,
+}
 
 // stripExt removes the extension of archive / package file names.
 func stripExt(name string) string {

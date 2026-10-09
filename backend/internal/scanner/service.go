@@ -123,9 +123,14 @@ type Info struct {
 	ScannedAt       string           `json:"scanned_at"`
 	BoothSource     string           `json:"booth_source,omitempty"`
 	BoothCandidates []BoothCandidate `json:"booth_candidates,omitempty"`
+	// BoothPicked is the id chosen from a readme / .url link. If the user later
+	// replaces or clears it, the next scan learns the id as a dependency.
+	BoothPicked string `json:"booth_picked,omitempty"`
 	CompatReasons   []string         `json:"compat_reasons,omitempty"`
 	PreviewSource   string           `json:"preview_source,omitempty"`
 	CategorySource  string           `json:"category_source,omitempty"`
+	// Existing assets this draft may be another copy or version of.
+	MergeCandidates []MergeCandidate `json:"merge_candidates,omitempty"`
 }
 
 type avatarRef struct {
@@ -146,9 +151,9 @@ func (s *Service) Scan(ctx context.Context) (*Result, error) {
 	if len(cfg.Roots) == 0 {
 		return nil, ErrNoRoots
 	}
-
-	groups, warnings := Plan(cfg)
-	result := &Result{Groups: len(groups), Attached: []AttachedFile{}, Warnings: append([]string{}, warnings...)}
+	if cfg, err = s.learnRejectedLinks(ctx, cfg); err != nil {
+		return nil, err
+	}
 
 	linked, err := s.linkedPaths(ctx)
 	if err != nil {
@@ -168,6 +173,28 @@ func (s *Service) Scan(ctx context.Context) (*Result, error) {
 	}
 	deps := lowerSet(cfg.KnownDependencies)
 
+	// What the library already has guides the walk: a registered or ignored
+	// folder is one asset as it is, and avatar names mark per-avatar variants.
+	lib, err := s.loadLibrary(ctx)
+	if err != nil {
+		return nil, err
+	}
+	taken := map[string]bool{} // BOOTH ids already used by library assets
+	for _, a := range lib.assets {
+		if a.boothID != "" {
+			taken[a.boothID] = true
+		}
+	}
+	opts := PlanOptions{}
+	if opts.Known, err = s.knownPaths(ctx); err != nil {
+		return nil, err
+	}
+	for _, a := range avatars {
+		opts.AvatarNames = append(opts.AvatarNames, a.name)
+	}
+	groups, warnings := PlanWith(cfg, opts)
+	result := &Result{Groups: len(groups), Attached: []AttachedFile{}, Warnings: append([]string{}, warnings...)}
+
 	// Avatars first, so outfits scanned in the same run can reference new avatar drafts.
 	sort.SliceStable(groups, func(i, j int) bool {
 		return groups[i].Category == "Avatar" && groups[j].Category != "Avatar"
@@ -177,7 +204,7 @@ func (s *Service) Scan(ctx context.Context) (*Result, error) {
 		var fresh []Member
 		var linkedID int64
 		for _, m := range g.Members {
-			p := strings.ToLower(m.Path)
+			p := normPath(m.Path)
 			if id, ok := linked[p]; ok {
 				if linkedID == 0 {
 					linkedID = id
@@ -188,6 +215,15 @@ func (s *Service) Scan(ctx context.Context) (*Result, error) {
 				result.Ignored++
 				continue
 			}
+			// Inside a folder that is already an asset, or that was ignored:
+			// part of that asset, never a draft of its own.
+			if _, ok := within(p, linked); ok {
+				continue
+			}
+			if _, ok := within(p, ignored); ok {
+				result.Ignored++
+				continue
+			}
 			fresh = append(fresh, m)
 		}
 		if len(fresh) == 0 {
@@ -195,18 +231,27 @@ func (s *Service) Scan(ctx context.Context) (*Result, error) {
 			continue
 		}
 
+		// New files of an asset the library already has: a newer version next
+		// to a linked one, or one recognised by BOOTH id or an earlier name.
+		target, candidates := lib.match(g, deps)
+		if linkedID == 0 && target != nil {
+			linkedID = target.id
+		}
 		if linkedID != 0 {
 			s.attach(ctx, linkedID, fresh, result)
+			for _, m := range fresh {
+				linked[normPath(m.Path)] = linkedID
+			}
 			continue
 		}
 
-		id, err := s.createDraft(ctx, g, fresh, categories, avatars, deps, result)
+		id, err := s.createDraft(ctx, g, fresh, categories, avatars, deps, taken, candidates, result)
 		if err != nil {
 			result.Warnings = append(result.Warnings, fmt.Sprintf("%s: %v", g.Name, err))
 			continue
 		}
 		for _, m := range fresh {
-			linked[strings.ToLower(m.Path)] = id
+			linked[normPath(m.Path)] = id
 		}
 		if g.Category == "Avatar" {
 			avatars = append(avatars, avatarRef{id: id, name: g.Name, key: g.Key, boothID: g.BoothID})
@@ -233,9 +278,10 @@ func (s *Service) attach(ctx context.Context, assetID int64, members []Member, r
 
 func (s *Service) createDraft(
 	ctx context.Context, g *Group, members []Member,
-	categories map[string]int64, avatars []avatarRef, deps map[string]bool, result *Result,
+	categories map[string]int64, avatars []avatarRef, deps, taken map[string]bool,
+	mergeCandidates []MergeCandidate, result *Result,
 ) (int64, error) {
-	info := Info{ScannedAt: time.Now().UTC().Format(time.RFC3339)}
+	info := Info{ScannedAt: time.Now().UTC().Format(time.RFC3339), MergeCandidates: mergeCandidates}
 
 	var categoryID *int64
 	if id, ok := categories[strings.ToLower(g.Category)]; ok {
@@ -260,14 +306,23 @@ func (s *Service) createDraft(
 	score := map[string]int{}
 	firstFile := map[string]string{}
 	for _, l := range g.BoothLinks {
-		if deps[l.ID] || l.ID == g.BoothID {
+		if l.ID == g.BoothID {
 			continue
 		}
+		// Avatars first: an avatar id learned as a dependency still means compatibility.
 		if a, ok := avatarByBooth[l.ID]; ok {
 			if a.key != g.Key {
 				compat[a.id] = asset.CompatAvatar{AvatarAssetID: &a.id, AvatarName: a.name}
 				info.CompatReasons = append(info.CompatReasons, fmt.Sprintf("%s is linked in %s", a.name, l.File))
 			}
+			continue
+		}
+		if deps[l.ID] {
+			continue
+		}
+		// A readme link to another item already in the library is a related
+		// item or requirement, not this asset (a sure .url match was attached).
+		if taken[l.ID] && !strings.EqualFold(filepath.Ext(l.File), ".url") {
 			continue
 		}
 		score[l.ID]++
@@ -294,12 +349,15 @@ func (s *Service) createDraft(
 	if boothURL == "" && len(ids) > 0 && (len(ids) == 1 || score[ids[0]] > score[ids[1]]) {
 		boothURL = boothItemURL(ids[0])
 		info.BoothSource = firstFile[ids[0]]
+		info.BoothPicked = ids[0]
 	}
 
 	// Compatibility by name: "hamanosis_Small_Lady_Kipfel" mentions the Kipfel avatar.
+	// An outfit folder named just "Kipfel" counts too, as long as its category says
+	// it is not the avatar itself.
 	if g.Category != "Avatar" {
 		for _, a := range avatars {
-			if _, done := compat[a.id]; done || len(a.key) < 3 || a.key == g.Key {
+			if _, done := compat[a.id]; done || len(a.key) < 3 || (a.key == g.Key && g.Category == "") {
 				continue
 			}
 			if containsWord(g.Key, a.key) {
@@ -469,7 +527,7 @@ func (s *Service) linkedPaths(ctx context.Context) (map[string]int64, error) {
 		if err := rows.Scan(&p, &id); err != nil {
 			return nil, err
 		}
-		linked[strings.ToLower(p)] = id
+		linked[normPath(p)] = id
 	}
 	return linked, rows.Err()
 }
@@ -479,7 +537,93 @@ func (s *Service) ignoredPaths(ctx context.Context) (map[string]bool, error) {
 	if err != nil {
 		return nil, err
 	}
-	return lowerSet(paths), nil
+	set := map[string]bool{}
+	for _, p := range paths {
+		set[normPath(p)] = true
+	}
+	return set, nil
+}
+
+// learnRejectedLinks turns the user's corrections into scanner settings: a
+// BOOTH id the scanner picked from a readme, which the user then replaced or
+// removed, is not the asset itself (usually a base avatar, shader or tool
+// linked in the readme). It is added to the dependency list, visible and
+// editable in Settings, so other items linking it are not given it again.
+// Each correction is learned once.
+func (s *Service) learnRejectedLinks(ctx context.Context, cfg Config) (Config, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT id, COALESCE(booth_url, ''), scan_info FROM assets WHERE scan_info LIKE '%booth_picked%'")
+	if err != nil {
+		return cfg, fmt.Errorf("failed to load scan hints: %w", err)
+	}
+	type hint struct {
+		id   int64
+		info Info
+	}
+	var rejected []hint
+	for rows.Next() {
+		var h hint
+		var boothURL, raw string
+		if err := rows.Scan(&h.id, &boothURL, &raw); err != nil {
+			rows.Close()
+			return cfg, err
+		}
+		if json.Unmarshal([]byte(raw), &h.info) == nil && h.info.BoothPicked != "" &&
+			boothIDFromURL(boothURL) != h.info.BoothPicked {
+			rejected = append(rejected, h)
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil || len(rejected) == 0 {
+		return cfg, err
+	}
+
+	deps := lowerSet(cfg.KnownDependencies)
+	for _, h := range rejected {
+		if !deps[h.info.BoothPicked] {
+			deps[h.info.BoothPicked] = true
+			cfg.KnownDependencies = append(cfg.KnownDependencies, h.info.BoothPicked)
+		}
+	}
+	saved, err := s.SaveConfig(ctx, cfg)
+	if err != nil {
+		return cfg, err
+	}
+	for _, h := range rejected {
+		h.info.BoothPicked = ""
+		if data, err := json.Marshal(h.info); err == nil {
+			_, _ = s.db.ExecContext(ctx, "UPDATE assets SET scan_info = ? WHERE id = ?", string(data), h.id)
+		}
+	}
+	return saved, nil
+}
+
+// knownPaths lists every linked or ignored path, as stored.
+func (s *Service) knownPaths(ctx context.Context) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT path FROM asset_files UNION SELECT path FROM scan_ignored")
+	if err != nil {
+		return nil, fmt.Errorf("failed to load known paths: %w", err)
+	}
+	defer rows.Close()
+	var paths []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, err
+		}
+		paths = append(paths, p)
+	}
+	return paths, rows.Err()
+}
+
+// within finds the closest folder above path (a normPath) that is a key of set.
+func within[V any](path string, set map[string]V) (V, bool) {
+	for dir := filepath.Dir(path); dir != path; path, dir = dir, filepath.Dir(dir) {
+		if v, ok := set[dir]; ok {
+			return v, true
+		}
+	}
+	var zero V
+	return zero, false
 }
 
 func (s *Service) categoryIDs(ctx context.Context) (map[string]int64, error) {

@@ -134,6 +134,11 @@ func PlanWith(cfg Config, opts PlanOptions) ([]*Group, []string) {
 		}
 	}
 	for _, known := range opts.Known {
+		// Only folders: a file linked from inside an asset folder (an extra
+		// package added by hand) must not turn that folder into a collection.
+		if fi, err := os.Stat(known); err != nil || !fi.IsDir() {
+			continue
+		}
 		path := normPath(known)
 		p.boundary[path] = true
 		for dir := filepath.Dir(path); dir != path; path, dir = dir, filepath.Dir(dir) {

@@ -254,3 +254,36 @@ func urlQuery(s string) string {
 	r := strings.NewReplacer("%", "%25", " ", "%20", "&", "%26", "+", "%2B", "#", "%23")
 	return r.Replace(s)
 }
+
+func TestRegisteredFoldersGuideTheScan(t *testing.T) {
+	e := setup(t)
+	j := func(parts ...string) string { return filepath.Join(append([]string{e.lib}, parts...)...) }
+	// A shop folder with two items, and a wrapper folder around one item.
+	write(t, j("Clothes", "ShopB", "DressX", "Prefab", "DressX.prefab"), []byte("x"))
+	write(t, j("Clothes", "ShopB", "DressY", "Prefab", "DressY.prefab"), []byte("x"))
+	write(t, j("Accessory", "Halo", "Halo_Main", "Halo.prefab"), []byte("x"))
+	write(t, j("Accessory", "Halo", "Halo_Main", "Textures", "halo.png"), pngBytes)
+
+	// The user registers the whole shop folder as one asset, and the inner
+	// Halo folder (not the wrapper) by hand.
+	for _, path := range []string{j("Clothes", "ShopB"), j("Accessory", "Halo", "Halo_Main")} {
+		if code := e.do(t, http.MethodPost, "/api/assets", map[string]any{"name": filepath.Base(path), "local_path": path}, nil); code != http.StatusCreated {
+			t.Fatalf("create %s: %d", path, code)
+		}
+	}
+
+	cfg := scanner.DefaultConfig()
+	cfg.Roots = []string{e.lib}
+	e.do(t, http.MethodPut, "/api/scanner/config", cfg, nil)
+	var result scanner.Result
+	e.do(t, http.MethodPost, "/api/scanner/scan", nil, &result)
+
+	for name, d := range e.drafts(t) {
+		if strings.Contains(d.LocalPath, "ShopB") || strings.Contains(d.LocalPath, "Halo") {
+			t.Errorf("registered folders must not come back as drafts, got %q at %s", name, d.LocalPath)
+		}
+	}
+	if result.AlreadyLinked != 2 {
+		t.Errorf("both registered folders should count as already linked, got %+v", result)
+	}
+}

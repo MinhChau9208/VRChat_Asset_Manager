@@ -287,3 +287,68 @@ func TestRegisteredFoldersGuideTheScan(t *testing.T) {
 		t.Errorf("both registered folders should count as already linked, got %+v", result)
 	}
 }
+
+func TestNewFilesFindTheirExistingAsset(t *testing.T) {
+	e := setup(t)
+	j := func(parts ...string) string { return filepath.Join(append([]string{e.lib}, parts...)...) }
+	clothes, accessory := e.categoryID(t, "Clothes"), e.categoryID(t, "Accessory")
+	create := func(body map[string]any) asset.Asset {
+		var a asset.Asset
+		if code := e.do(t, http.MethodPost, "/api/assets", body, &a); code != http.StatusCreated {
+			t.Fatalf("create %v: %d", body, code)
+		}
+		return a
+	}
+
+	// Renamed from BOOTH; its old version folder has since been deleted.
+	dress := create(map[string]any{"name": "リボンドレス", "category_id": clothes, "local_path": j("Clothes", "Ribbon_Dress_1.0")})
+	write(t, j("Clothes", "Ribbon_Dress_1.1", "Dress.unitypackage"), []byte("x"))
+	// Registered by BOOTH link only, now downloaded under a different name.
+	wings := create(map[string]any{"name": "Angel Wings", "category_id": accessory, "booth_url": "https://booth.pm/ja/items/1234567"})
+	write(t, j("Accessory", "1234567 tenshi_hane", "Wings.unitypackage"), []byte("x"))
+	// Only the display name matches: suggested, not linked.
+	halo := create(map[string]any{"name": "Halo", "category_id": accessory})
+	write(t, j("Accessory", "Halo", "Halo.unitypackage"), []byte("x"))
+	write(t, j("Accessory", "Halo", "main.png"), pngBytes)
+
+	cfg := scanner.DefaultConfig()
+	cfg.Roots = []string{e.lib}
+	e.do(t, http.MethodPut, "/api/scanner/config", cfg, nil)
+	var result scanner.Result
+	e.do(t, http.MethodPost, "/api/scanner/scan", nil, &result)
+
+	attached := map[int64]string{}
+	for _, a := range result.Attached {
+		attached[a.AssetID] = a.Path
+	}
+	if !strings.HasSuffix(attached[dress.ID], "Ribbon_Dress_1.1") {
+		t.Errorf("new dress version should attach to the renamed asset, got %+v", result.Attached)
+	}
+	if !strings.HasSuffix(attached[wings.ID], "1234567 tenshi_hane") {
+		t.Errorf("BOOTH id in the folder name should attach to the wings, got %+v", result.Attached)
+	}
+
+	drafts := e.drafts(t)
+	haloDraft, ok := drafts["Halo"]
+	if !ok {
+		t.Fatalf("Halo should stay a draft, got %v", keys(drafts))
+	}
+	if !strings.Contains(string(haloDraft.ScanInfo), `"merge_candidates":[{"id":`+strconv.FormatInt(halo.ID, 10)) {
+		t.Errorf("Halo draft should suggest the existing Halo, got %s", haloDraft.ScanInfo)
+	}
+
+	// Merging moves the files and preview into the existing asset.
+	var merged asset.Asset
+	if code := e.do(t, http.MethodPost, "/api/scanner/merge", map[string]any{"draft_id": haloDraft.ID, "target_id": halo.ID}, &merged); code != http.StatusOK {
+		t.Fatalf("merge failed: %d", code)
+	}
+	if len(merged.Files) != 1 || merged.LocalPath != j("Accessory", "Halo") || merged.PreviewPath == "" {
+		t.Errorf("merged asset: files=%+v local=%q preview=%q", merged.Files, merged.LocalPath, merged.PreviewPath)
+	}
+	if code := e.do(t, http.MethodGet, "/api/assets/"+strconv.FormatInt(haloDraft.ID, 10), nil, nil); code != http.StatusNotFound {
+		t.Errorf("merged draft should be gone, got %d", code)
+	}
+	if code := e.do(t, http.MethodPost, "/api/scanner/merge", map[string]any{"draft_id": dress.ID, "target_id": halo.ID}, nil); code != http.StatusBadRequest {
+		t.Errorf("only drafts can be merged, got %d", code)
+	}
+}

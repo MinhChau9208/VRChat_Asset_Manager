@@ -28,6 +28,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/scanner/scan", h.Scan)
 	mux.HandleFunc("POST /api/scanner/accept", h.Accept)
 	mux.HandleFunc("POST /api/scanner/ignore", h.Ignore)
+	mux.HandleFunc("POST /api/scanner/merge", h.Merge)
 	mux.HandleFunc("GET /api/scanner/ignored", h.ListIgnored)
 	mux.HandleFunc("DELETE /api/scanner/ignored", h.Unignore)
 }
@@ -141,6 +142,32 @@ func (h *Handler) Ignore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]int{"ignored": n})
+}
+
+// Merge handles POST /api/scanner/merge
+func (h *Handler) Merge(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		DraftID  int64 `json:"draft_id"`
+		TargetID int64 `json:"target_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json request body: "+err.Error())
+		return
+	}
+	if req.DraftID == 0 || req.TargetID == 0 {
+		writeError(w, http.StatusBadRequest, "draft_id and target_id are required")
+		return
+	}
+	merged, err := h.svc.Merge(r.Context(), req.DraftID, req.TargetID)
+	if errors.Is(err, ErrMergeTarget) {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err != nil {
+		writeDraftError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, merged)
 }
 
 // ListIgnored handles GET /api/scanner/ignored

@@ -126,6 +126,8 @@ type Info struct {
 	CompatReasons   []string         `json:"compat_reasons,omitempty"`
 	PreviewSource   string           `json:"preview_source,omitempty"`
 	CategorySource  string           `json:"category_source,omitempty"`
+	// Existing assets this draft may be another copy or version of.
+	MergeCandidates []MergeCandidate `json:"merge_candidates,omitempty"`
 }
 
 type avatarRef struct {
@@ -167,6 +169,10 @@ func (s *Service) Scan(ctx context.Context) (*Result, error) {
 
 	// What the library already has guides the walk: a registered or ignored
 	// folder is one asset as it is, and avatar names mark per-avatar variants.
+	lib, err := s.loadLibrary(ctx)
+	if err != nil {
+		return nil, err
+	}
 	opts := PlanOptions{}
 	if opts.Known, err = s.knownPaths(ctx); err != nil {
 		return nil, err
@@ -213,12 +219,21 @@ func (s *Service) Scan(ctx context.Context) (*Result, error) {
 			continue
 		}
 
+		// New files of an asset the library already has: a newer version next
+		// to a linked one, or one recognised by BOOTH id or an earlier name.
+		target, candidates := lib.match(g, deps)
+		if linkedID == 0 && target != nil {
+			linkedID = target.id
+		}
 		if linkedID != 0 {
 			s.attach(ctx, linkedID, fresh, result)
+			for _, m := range fresh {
+				linked[normPath(m.Path)] = linkedID
+			}
 			continue
 		}
 
-		id, err := s.createDraft(ctx, g, fresh, categories, avatars, deps, result)
+		id, err := s.createDraft(ctx, g, fresh, categories, avatars, deps, candidates, result)
 		if err != nil {
 			result.Warnings = append(result.Warnings, fmt.Sprintf("%s: %v", g.Name, err))
 			continue
@@ -251,9 +266,10 @@ func (s *Service) attach(ctx context.Context, assetID int64, members []Member, r
 
 func (s *Service) createDraft(
 	ctx context.Context, g *Group, members []Member,
-	categories map[string]int64, avatars []avatarRef, deps map[string]bool, result *Result,
+	categories map[string]int64, avatars []avatarRef, deps map[string]bool,
+	mergeCandidates []MergeCandidate, result *Result,
 ) (int64, error) {
-	info := Info{ScannedAt: time.Now().UTC().Format(time.RFC3339)}
+	info := Info{ScannedAt: time.Now().UTC().Format(time.RFC3339), MergeCandidates: mergeCandidates}
 
 	var categoryID *int64
 	if id, ok := categories[strings.ToLower(g.Category)]; ok {

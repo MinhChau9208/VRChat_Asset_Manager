@@ -20,12 +20,13 @@ import {
   getIgnoredPaths,
   getScannerConfig,
   ignoreDrafts,
+  mergeDraft,
   runScan,
   unignorePath,
   updateAsset,
 } from "@/lib/api";
 import { ScannerSettings } from "@/components/ScannerSettings";
-import { Check, Package, ScanSearch, Settings2, ShoppingBag, TriangleAlert, UserRound, X } from "lucide-react";
+import { Check, Combine, Package, ScanSearch, Settings2, ShoppingBag, TriangleAlert, UserRound, X } from "lucide-react";
 import { assetHref } from "@/lib/routes";
 import { useI18n } from "@/lib/i18n";
 import type { Messages } from "@/lib/messages/en";
@@ -66,6 +67,53 @@ function CategorySelect({
   );
 }
 
+// Picks any library asset to merge a draft into.
+function MergePicker({ library, onPick }: { library: Asset[]; onPick: (target: Asset) => void }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const label = (a: Asset) => `${a.name} (#${a.id})`;
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="px-3 py-1 rounded-lg text-muted-foreground hover:text-foreground text-xs cursor-pointer"
+      >
+        {t.review.mergeOther}
+      </button>
+    );
+  }
+  return (
+    <>
+      <input
+        autoFocus
+        list="merge-targets"
+        value={text}
+        placeholder={t.review.mergePlaceholder}
+        onChange={(e) => {
+          setText(e.target.value);
+          const target = library.find((a) => label(a) === e.target.value);
+          if (target) {
+            setText("");
+            setOpen(false);
+            onPick(target);
+          }
+        }}
+        onBlur={() => !text && setOpen(false)}
+        onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
+        className="w-36 rounded-lg border border-border bg-background/80 px-2 py-1 text-xs text-foreground focus:border-ring focus:outline-none"
+      />
+      <datalist id="merge-targets">
+        {library.map((a) => (
+          <option key={a.id} value={label(a)} />
+        ))}
+      </datalist>
+    </>
+  );
+}
+
 // The backend reports changed fields as "name", "compatible:Manuka", "tag:…".
 function changeLabel(change: string, t: Messages): string {
   if (change.startsWith("compatible:")) return t.review.changedCompat(change.slice("compatible:".length));
@@ -84,6 +132,7 @@ export default function ReviewPage() {
   const [config, setConfig] = useState<ScannerConfig | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [drafts, setDrafts] = useState<Asset[]>([]);
+  const [library, setLibrary] = useState<Asset[]>([]);
   const [missingCount, setMissingCount] = useState(0);
   const [ignoredPaths, setIgnoredPaths] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -106,9 +155,10 @@ export default function ReviewPage() {
       getAssets({ status: "draft", sort: "name_asc" }),
       getAssets({ local_status: "missing" }),
       getIgnoredPaths(),
+      getAssets({ sort: "name_asc" }),
     ])
       // The list endpoint omits files and compatibility, so load each draft fully.
-      .then(async ([cfg, cats, draftList, missing, ignored]) => {
+      .then(async ([cfg, cats, draftList, missing, ignored, active]) => {
         const full = await Promise.all(draftList.map((d) => getAssetByID(d.id)));
         if (cancelled) return;
         setConfig(cfg);
@@ -116,6 +166,7 @@ export default function ReviewPage() {
         setDrafts(full);
         setMissingCount(missing.length);
         setIgnoredPaths(ignored);
+        setLibrary(active);
         setSelected((prev) => new Set([...prev].filter((id) => full.some((d) => d.id === id))));
         if (cfg.roots.length === 0) setShowSettings(true);
       })
@@ -197,6 +248,10 @@ export default function ReviewPage() {
   };
 
   const sourceLabel = (source: string) => (source === "folder name" ? t.review.folderName : source);
+
+  const handleMerge = (d: Asset, target: { id: number; name: string }) => {
+    if (window.confirm(t.review.mergeConfirm(d.name, target.name))) run(() => mergeDraft(d.id, target.id));
+  };
 
   const setBooth = (d: Asset, url: string) => run(() => updateAsset(d.id, assetUpdatePayload(d, { booth_url: url })));
 
@@ -491,6 +546,23 @@ export default function ReviewPage() {
                         </span>
                       ))}
                     </div>
+
+                    {(info?.merge_candidates ?? []).length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                        {(info?.merge_candidates ?? []).map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => handleMerge(d, c)}
+                            disabled={busy}
+                            className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-800/60 hover:border-amber-600 cursor-pointer disabled:opacity-50"
+                            title={t.review.mergeCandidateTitle(t.review.mergeReason(c.reason, sourceLabel(c.source ?? "")))}
+                          >
+                            <Combine className="inline size-3.5" /> {t.review.mergeInto(c.name)}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-1.5 shrink-0">
@@ -516,6 +588,7 @@ export default function ReviewPage() {
                     >
                       {t.common.ignore}
                     </button>
+                    <MergePicker library={library} onPick={(target) => handleMerge(d, target)} />
                   </div>
                 </li>
               );

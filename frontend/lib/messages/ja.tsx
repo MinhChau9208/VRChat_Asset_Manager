@@ -338,6 +338,15 @@ const ja: Messages = {
     candidateTitle: (source: string) => `${source} で見つかりました。クリックで使用します。`,
     ignoredPaths: (n: number) => `無視しているパス ${n} 件`,
     restore: "元に戻す",
+    mergeInto: (name: string) => `${name} に統合？`,
+    mergeCandidateTitle: (reason: string) =>
+      `同じアイテムの可能性があります（${reason}）。クリックするとファイルをそちらへ移し、下書きを削除します。`,
+    mergeOther: "既存アセットに統合…",
+    mergePlaceholder: "アセット名を入力",
+    mergeConfirm: (draft: string, target: string) =>
+      `「${draft}」のファイルを「${target}」へ移し、下書きを削除しますか？「${target}」の名前や情報はそのままです。`,
+    mergeReason: (reason: string, source: string) =>
+      reason === "booth" ? `同じ BOOTH アイテム（${source}）` : reason === "file_name" ? "同じフォルダー名・ファイル名" : "同じ名前",
   },
 
   scanner: {

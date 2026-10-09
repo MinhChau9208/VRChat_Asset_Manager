@@ -646,6 +646,8 @@ export interface ScanInfo {
   compat_reasons?: string[];
   preview_source?: string;
   category_source?: string;
+  /** Existing assets this draft is probably another copy or version of. */
+  merge_candidates?: { id: number; name: string; reason: "booth" | "file_name" | "name"; source?: string }[];
 }
 
 export async function getScannerConfig(): Promise<ScannerConfig> {
@@ -672,6 +674,11 @@ export function acceptDrafts(assetIds: number[]): Promise<{ accepted: number }> 
 /** Deletes the drafts and makes later scans skip their paths. Files on disk are untouched. */
 export function ignoreDrafts(assetIds: number[]): Promise<{ ignored: number }> {
   return sendJSON("POST", "/api/scanner/ignore", { asset_ids: assetIds }, "Failed to ignore drafts");
+}
+
+/** Moves a draft's files into an existing asset and removes the draft. */
+export function mergeDraft(draftId: number, targetId: number): Promise<Asset> {
+  return sendJSON("POST", "/api/scanner/merge", { draft_id: draftId, target_id: targetId }, "Failed to merge draft");
 }
 
 export async function getIgnoredPaths(): Promise<string[]> {

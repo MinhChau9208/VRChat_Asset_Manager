@@ -342,6 +342,15 @@ const en = {
     candidateTitle: (source: string) => `Found in ${source}. Click to use.`,
     ignoredPaths: (n: number) => plural(n, "ignored path", "ignored paths"),
     restore: "Restore",
+    mergeInto: (name: string) => `merge into ${name}?`,
+    mergeCandidateTitle: (reason: string) =>
+      `Probably the same item (${reason}). Click to move these files into it and remove the draft.`,
+    mergeOther: "Merge into…",
+    mergePlaceholder: "Type an asset name",
+    mergeConfirm: (draft: string, target: string) =>
+      `Move the files of "${draft}" into "${target}" and remove the draft? "${target}" keeps its name and details.`,
+    mergeReason: (reason: string, source: string) =>
+      reason === "booth" ? `same BOOTH item, found in ${source}` : reason === "file_name" ? "same folder / file name" : "same name",
   },
 
   scanner: {

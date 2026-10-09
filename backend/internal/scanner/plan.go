@@ -69,18 +69,23 @@ type Group struct {
 	Key         string
 	Name        string
 	Category    string // category name from the folder mapping, "" if unknown
-	catRank     int    // 2 = mapped folder, 1 = mapped archive, 0 = none
 	Members     []Member
 	BoothID     string // from a folder/file name
 	BoothLinks  []BoothLink
 	PreviewPath string
 }
 
+// entry is one folder or file found by the walk, before grouping.
+type entry struct {
+	path, kind, category string
+	isFile               bool
+}
+
 type planner struct {
 	cfg     Config
 	ignore  map[string]bool
 	archive map[string]bool
-	groups  map[string]*Group
+	entries []entry
 	images  map[string]string // matchKey -> image path found next to archives
 	warns   []string
 }
@@ -93,27 +98,103 @@ func lowerSet(names []string) map[string]bool {
 	return set
 }
 
+// PlanOptions carries what the library already knows into a scan.
+type PlanOptions struct{}
+
 // Plan walks the configured roots and groups what it finds. It reads only
 // directory listings, small text files and image headers; it never writes.
-func Plan(cfg Config) ([]*Group, []string) {
+func Plan(cfg Config) ([]*Group, []string) { return PlanWith(cfg, PlanOptions{}) }
+
+// PlanWith is Plan with knowledge from the library.
+func PlanWith(cfg Config, opts PlanOptions) ([]*Group, []string) {
 	p := &planner{
 		cfg:     cfg,
 		ignore:  lowerSet(cfg.Ignore),
 		archive: lowerSet(cfg.ArchiveDirs),
-		groups:  map[string]*Group{},
 		images:  map[string]string{},
 	}
 	for _, root := range cfg.Roots {
 		p.scanRoot(root)
 	}
 
-	groups := make([]*Group, 0, len(p.groups))
-	for _, g := range p.groups {
+	groups := p.group()
+	for _, g := range groups {
 		p.finish(g)
-		groups = append(groups, g)
 	}
 	sort.Slice(groups, func(i, j int) bool { return groups[i].Members[0].Path < groups[j].Members[0].Path })
 	return groups, p.warns
+}
+
+// group turns entries into groups. Folders only merge with folders of the same
+// category, so two different items that share a name ("Boots" in Shoes and in
+// Clothes, the Kipfel avatar and an outfit folder called "Kipfel") stay apart.
+// Archives and packages join a same-named folder, preferring one in their own
+// category; a stray zip in another category's LEGACY folder joins the only
+// folder with its name, but never across the Avatar / non-Avatar line.
+func (p *planner) group() []*Group {
+	var groups []*Group
+	byKey := map[string]*Group{}     // key + category -> group
+	folders := map[string][]*Group{} // key -> folder groups
+	get := func(key, category string) *Group {
+		id := key + "\x00" + strings.ToLower(category)
+		g := byKey[id]
+		if g == nil {
+			g = &Group{Key: key, Category: category}
+			byKey[id] = g
+			groups = append(groups, g)
+		}
+		return g
+	}
+	addMember := func(g *Group, e entry) {
+		_, version := splitVersion(filepath.Base(e.path))
+		g.Members = append(g.Members, Member{Path: e.path, Kind: e.kind, Version: version})
+	}
+
+	for _, e := range p.entries {
+		if e.isFile {
+			continue
+		}
+		key := matchKey(filepath.Base(e.path))
+		g := get(key, e.category)
+		if len(g.Members) == 0 {
+			folders[key] = append(folders[key], g)
+		}
+		addMember(g, e)
+	}
+	for _, e := range p.entries {
+		if !e.isFile {
+			continue
+		}
+		key := matchKey(filepath.Base(e.path))
+		var target *Group
+		var crossing []*Group
+		for _, g := range folders[key] {
+			if strings.EqualFold(g.Category, e.category) {
+				target = g
+				break
+			}
+			if !crossesAvatarLine(g.Category, e.category) {
+				crossing = append(crossing, g)
+			}
+		}
+		if target == nil && len(crossing) == 1 {
+			target = crossing[0]
+		}
+		if target == nil {
+			target = get(key, e.category)
+		}
+		addMember(target, e)
+	}
+	return groups
+}
+
+// crossesAvatarLine reports whether one category is Avatar and the other is a
+// known non-Avatar category: an avatar and an outfit never share files.
+func crossesAvatarLine(a, b string) bool {
+	if a == "" || b == "" {
+		return false
+	}
+	return strings.EqualFold(a, "Avatar") != strings.EqualFold(b, "Avatar")
 }
 
 func (p *planner) skip(name string) bool {
@@ -200,30 +281,10 @@ func (p *planner) addFile(path, category string) {
 }
 
 func (p *planner) add(path, kind, category string, isFile bool) {
-	name := filepath.Base(path)
-	key := matchKey(name)
-	if key == "" {
+	if matchKey(filepath.Base(path)) == "" {
 		return
 	}
-	g := p.groups[key]
-	if g == nil {
-		g = &Group{Key: key}
-		p.groups[key] = g
-	}
-	_, version := splitVersion(name)
-	g.Members = append(g.Members, Member{Path: path, Kind: kind, Version: version})
-
-	// A mapped folder decides the category over a mapped archive.
-	rank := 0
-	if category != "" {
-		rank = 1
-		if !isFile {
-			rank = 2
-		}
-	}
-	if rank > g.catRank {
-		g.Category, g.catRank = category, rank
-	}
+	p.entries = append(p.entries, entry{path: path, kind: kind, category: category, isFile: isFile})
 }
 
 // looksLikeAsset reports whether a folder directly contains Unity/3D files.

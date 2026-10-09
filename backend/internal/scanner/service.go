@@ -297,9 +297,11 @@ func (s *Service) createDraft(
 	}
 
 	// Compatibility by name: "hamanosis_Small_Lady_Kipfel" mentions the Kipfel avatar.
+	// An outfit folder named just "Kipfel" counts too, as long as its category says
+	// it is not the avatar itself.
 	if g.Category != "Avatar" {
 		for _, a := range avatars {
-			if _, done := compat[a.id]; done || len(a.key) < 3 || a.key == g.Key {
+			if _, done := compat[a.id]; done || len(a.key) < 3 || (a.key == g.Key && g.Category == "") {
 				continue
 			}
 			if containsWord(g.Key, a.key) {
